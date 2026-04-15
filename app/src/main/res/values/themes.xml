@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OrthodoxCalendar" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.OrthodoxCalendar.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FF2C2418</item>
+        <item name="postSplashScreenTheme">@style/Theme.OrthodoxCalendar</item>
+    </style>
+</resources>
