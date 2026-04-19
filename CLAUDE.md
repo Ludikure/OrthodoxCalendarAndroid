@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Android port of the Orthodox Calendar iOS app. Native Kotlin + Jetpack Compose. Multi-locale Orthodox Church calendar with daily saints, scripture readings, fasting guidance, and saint biographies. Fully offline — all data bundled as JSON in assets.
+Android port of the [Orthodox Calendar iOS app](https://github.com/Ludikure/OrthodoxCalendar). Native Kotlin + Jetpack Compose. Orthodox Church calendar with daily saints, scripture readings, fasting guidance, and saint biographies. Supports Serbian, Russian, and English calendars — fully offline, all data bundled as JSON in assets.
 
 ## Build
 
@@ -95,10 +95,10 @@ Single `CalendarUiState` data class exposed via `StateFlow`. Contains: currentMo
 Same logic as iOS — `commonWords` filter, single-bio Serbian mode, keyword-match multi-bio EN/RU with used-bio tracking. Moveable feasts never get bios. `Feast.description` takes priority over bio.
 
 ### Haptic Feedback
-`Haptics` utility uses `View.performHapticFeedback()`:
-- `medium` — Today button
-- `light` — Search, Settings, Share, date picker
-- `selection` — Month arrows, grid/list toggle, grid day tap
+`Haptics` utility uses `View.performHapticFeedback()` with sharp single-tick constants for responsiveness:
+- `light` (`KEYBOARD_TAP`) — Search, Settings, Share, date picker
+- `medium` (`VIRTUAL_KEY`) — Today button
+- `selection` (`CONTEXT_CLICK`) — Month arrows, grid/list toggle, grid day tap
 
 ### Navigation
 Compose Navigation with `NavGraph`. Routes: Splash → Calendar → DayDetail, Calendar → Search/Settings/About. DatePicker shown as `ModalBottomSheet` from CalendarTabScreen.
