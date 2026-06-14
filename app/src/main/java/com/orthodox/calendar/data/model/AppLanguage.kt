@@ -8,8 +8,8 @@ enum class AppLanguage(val code: String) {
 
     val displayName: String
         get() = when (this) {
-            SR -> "Srpski"
-            RU -> "Russkiy"
+            SR -> "Српски"
+            RU -> "Русский"
             EN -> "English (Old Calendar)"
             EN_NC -> "English (New Calendar)"
         }
