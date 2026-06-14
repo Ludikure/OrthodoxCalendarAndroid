@@ -100,7 +100,11 @@ fun SaintSearchScreen(
             return@LaunchedEffect
         }
 
-        val calFile = repository.loadCalendarFile(language.code, currentYear)
+        val calFile = try {
+            repository.load(language.code, currentYear)
+        } catch (e: Exception) {
+            null
+        }
         if (calFile == null) {
             results = emptyList()
             return@LaunchedEffect

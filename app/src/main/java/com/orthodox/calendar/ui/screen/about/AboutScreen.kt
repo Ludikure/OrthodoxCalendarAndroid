@@ -201,7 +201,7 @@ fun AboutScreen(
                     color = AppColors.darkText
                 )
                 Text(
-                    text = "v1.2.0",
+                    text = "v${com.orthodox.calendar.BuildConfig.VERSION_NAME}",
                     fontSize = 12.sp,
                     color = AppColors.mutedText
                 )

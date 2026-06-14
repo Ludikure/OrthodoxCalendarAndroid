@@ -27,8 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.orthodox.calendar.BuildConfig
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.AppTheme
+import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
 
@@ -37,9 +39,11 @@ import com.orthodox.calendar.ui.theme.AppColors
 fun SettingsScreen(
     language: AppLanguage,
     theme: AppTheme,
+    bibleTranslation: BibleTranslation,
     localization: LocalizationBundle,
     onLanguageChanged: (AppLanguage) -> Unit,
     onThemeChanged: (AppTheme) -> Unit,
+    onBibleTranslationChanged: (BibleTranslation) -> Unit,
     onAboutClick: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -109,6 +113,43 @@ fun SettingsScreen(
                 }
             }
 
+            // English New Testament translation (KJV/WEB). Only relevant to the
+            // English locales; the Old Testament always uses the Septuagint.
+            if (language == AppLanguage.EN || language == AppLanguage.EN_NC) {
+                HorizontalDivider()
+
+                SectionHeader(title = "Bible Translation")
+                BibleTranslation.entries.forEach { t ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onBibleTranslationChanged(t) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = t.displayName,
+                            fontSize = 16.sp,
+                            color = AppColors.darkText
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        RadioButton(
+                            selected = bibleTranslation == t,
+                            onClick = { onBibleTranslationChanged(t) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = AppColors.crimson
+                            )
+                        )
+                    }
+                }
+                Text(
+                    text = "New Testament wording. The Old Testament always uses the Septuagint.",
+                    fontSize = 12.sp,
+                    color = AppColors.mutedText,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
             HorizontalDivider()
 
             // About link
@@ -144,7 +185,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "1.2.0",
+                    text = BuildConfig.VERSION_NAME,
                     fontSize = 16.sp,
                     color = AppColors.mutedText
                 )

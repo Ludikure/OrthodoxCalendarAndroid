@@ -27,7 +27,14 @@ data class UILabels(
     val settingsLabel: String,
     val todayLabel: String,
     val feastTypes: Map<String, String> = emptyMap(),
-    val fastingTypes: Map<String, String> = emptyMap()
+    val fastingTypes: Map<String, String> = emptyMap(),
+    // Optional keys mirrored from iOS UILabels; nullable so older JSON still loads.
+    val loadingLabel: String? = null,
+    val offlineMessage: String? = null,
+    val retryLabel: String? = null,
+    val updateRequiredTitle: String? = null,
+    val updateRequiredMessage: String? = null,
+    val updateButton: String? = null
 )
 
 @Serializable

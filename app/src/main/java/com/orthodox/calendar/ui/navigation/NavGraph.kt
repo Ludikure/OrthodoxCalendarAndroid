@@ -72,6 +72,7 @@ fun NavGraph(
                     day = day,
                     localization = localization,
                     language = uiState.language,
+                    bibleTranslation = uiState.bibleTranslation,
                     onBack = { navController.popBackStack() },
                     onAddReminder = {
                         navController.navigate("reminder/$gregorianDate")
@@ -121,9 +122,11 @@ fun NavGraph(
                 SettingsScreen(
                     language = uiState.language,
                     theme = uiState.theme,
+                    bibleTranslation = uiState.bibleTranslation,
                     localization = localization,
                     onLanguageChanged = { lang -> viewModel.forceReload(lang) },
                     onThemeChanged = { theme -> viewModel.setTheme(theme) },
+                    onBibleTranslationChanged = { t -> viewModel.setBibleTranslation(t) },
                     onAboutClick = { navController.navigate(Routes.About.route) },
                     onBack = { navController.popBackStack() }
                 )

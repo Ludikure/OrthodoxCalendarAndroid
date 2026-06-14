@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.ScriptureReading
 import com.orthodox.calendar.ui.theme.AppColors
 
@@ -36,9 +37,14 @@ import com.orthodox.calendar.ui.theme.AppColors
 fun ReadingCard(
     reading: ScriptureReading,
     language: AppLanguage,
+    bibleTranslation: BibleTranslation,
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+
+    // NT readings honour the KJV/WEB choice (English only); OT and other locales
+    // fall back to the bundled text. Mirror of iOS ReadingCard.displayText.
+    val displayText = reading.text(bibleTranslation)
 
     val localizedType = run {
         val t = reading.type.lowercase()
@@ -89,7 +95,7 @@ fun ReadingCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    if (reading.text != null) {
+                    if (displayText != null) {
                         isExpanded = !isExpanded
                     }
                 },
@@ -131,7 +137,7 @@ fun ReadingCard(
             )
 
             // Expand chevron
-            if (reading.text != null) {
+            if (displayText != null) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (isExpanded) "\u25B2" else "\u25BC",
@@ -152,10 +158,10 @@ fun ReadingCard(
         }
 
         // Expandable scripture text
-        if (isExpanded && reading.text != null && reading.text.isNotEmpty()) {
+        if (isExpanded && !displayText.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = reading.text,
+                text = displayText,
                 fontFamily = FontFamily.Serif,
                 fontSize = 14.sp,
                 color = AppColors.bodyText,

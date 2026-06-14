@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.orthodox.calendar.data.localization.LocalizationManager
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.AppTheme
+import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.preferences.AppPreferences
@@ -27,9 +28,11 @@ data class CalendarUiState(
     val viewMode: ViewMode = ViewMode.LIST,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val isOffline: Boolean = false,
     val loadedLocale: String = "",
     val language: AppLanguage = AppLanguage.SR,
     val theme: AppTheme = AppTheme.SYSTEM,
+    val bibleTranslation: BibleTranslation = BibleTranslation.KJV,
     val localization: LocalizationBundle? = null,
     val scrollToTodayTrigger: Boolean = false
 ) {
@@ -52,8 +55,16 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val lang = preferences.languageFlow.first()
             val theme = preferences.themeFlow.first()
+            val bibleTranslation = preferences.bibleTranslationFlow.first()
             val bundle = localizationManager.loadBundle(lang)
-            _uiState.update { it.copy(language = lang, theme = theme, localization = bundle) }
+            _uiState.update {
+                it.copy(
+                    language = lang,
+                    theme = theme,
+                    bibleTranslation = bibleTranslation,
+                    localization = bundle
+                )
+            }
             loadMonth()
         }
     }
@@ -76,6 +87,13 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             preferences.setTheme(theme)
             _uiState.update { it.copy(theme = theme) }
+        }
+    }
+
+    fun setBibleTranslation(translation: BibleTranslation) {
+        viewModelScope.launch {
+            preferences.setBibleTranslation(translation)
+            _uiState.update { it.copy(bibleTranslation = translation) }
         }
     }
 
@@ -122,25 +140,39 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         loadMonth()
     }
 
-    private fun loadData(locale: String, month: Int, year: Int) {
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    /** Re-run the current month's load (used by the offline/error retry UI). */
+    fun retry() {
+        loadMonth()
+    }
 
-        val days = repository.loadMonth(locale, year, month)
-        if (days.isEmpty()) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    errorMessage = "No data for $locale $year",
-                    daysInMonth = emptyList()
-                )
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    daysInMonth = days,
-                    loadedLocale = locale
-                )
+    private fun loadData(locale: String, month: Int, year: Int) {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null, isOffline = false) }
+
+        viewModelScope.launch {
+            try {
+                val days = repository.loadMonth(locale, year, month)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        daysInMonth = days,
+                        loadedLocale = locale,
+                        errorMessage = null,
+                        isOffline = false
+                    )
+                }
+            } catch (offline: CalendarRepository.LoadError.Offline) {
+                _uiState.update {
+                    it.copy(isLoading = false, isOffline = true, errorMessage = "offline")
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isOffline = false,
+                        errorMessage = "No data for $locale $year",
+                        daysInMonth = emptyList()
+                    )
+                }
             }
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.Feast
 import com.orthodox.calendar.data.model.LocalizationBundle
@@ -64,6 +65,7 @@ fun DayDetailScreen(
     day: CalendarDay,
     localization: LocalizationBundle,
     language: AppLanguage,
+    bibleTranslation: BibleTranslation,
     onBack: () -> Unit,
     onAddReminder: () -> Unit,
     modifier: Modifier = Modifier
@@ -129,7 +131,12 @@ fun DayDetailScreen(
 
                 // Readings
                 if (day.readings.isNotEmpty()) {
-                    ReadingsSection(day = day, localization = localization, language = language)
+                    ReadingsSection(
+                        day = day,
+                        localization = localization,
+                        language = language,
+                        bibleTranslation = bibleTranslation
+                    )
                 }
 
                 // Reflection
@@ -328,7 +335,8 @@ private fun SaintsSection(
 private fun ReadingsSection(
     day: CalendarDay,
     localization: LocalizationBundle,
-    language: AppLanguage
+    language: AppLanguage,
+    bibleTranslation: BibleTranslation
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,7 +354,11 @@ private fun ReadingsSection(
         Spacer(modifier = Modifier.height(10.dp))
 
         day.readings.forEachIndexed { index, reading ->
-            ReadingCard(reading = reading, language = language)
+            ReadingCard(
+                reading = reading,
+                language = language,
+                bibleTranslation = bibleTranslation
+            )
             if (index < day.readings.size - 1) {
                 Spacer(modifier = Modifier.height(8.dp))
             }
