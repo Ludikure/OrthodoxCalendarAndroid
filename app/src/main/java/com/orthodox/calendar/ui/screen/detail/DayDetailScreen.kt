@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.CalendarDay
+import com.orthodox.calendar.data.model.FastingPeriodInfo
+import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.Feast
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
@@ -66,6 +68,7 @@ fun DayDetailScreen(
     localization: LocalizationBundle,
     language: AppLanguage,
     bibleTranslation: BibleTranslation,
+    periodInfo: FastingPeriodInfo?,
     onBack: () -> Unit,
     onAddReminder: () -> Unit,
     modifier: Modifier = Modifier
@@ -108,7 +111,7 @@ fun DayDetailScreen(
                 .padding(paddingValues)
         ) {
             // Hero section
-            HeroSection(day = day, localization = localization, language = language)
+            HeroSection(day = day, localization = localization, language = language, periodInfo = periodInfo)
 
             // Content sections
             Column(
@@ -157,7 +160,8 @@ fun DayDetailScreen(
 private fun HeroSection(
     day: CalendarDay,
     localization: LocalizationBundle,
-    language: AppLanguage
+    language: AppLanguage,
+    periodInfo: FastingPeriodInfo?
 ) {
     val isGreat = day.isGreatFeast
 
@@ -188,27 +192,34 @@ private fun HeroSection(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        // Liturgical period badge
-        day.liturgicalPeriod?.takeIf { it.isNotEmpty() }?.let { period ->
+        // Fasting season badge (e.g. Great Lent) \u2014 driven by CalendarDay.fastingPeriod
+        periodInfo?.let { period ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .background(
-                        if (isGreat) AppColors.crimson.copy(alpha = 0.15f)
-                        else AppColors.warmBorder,
+                        AppColors.crimson.copy(alpha = 0.12f),
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
-                Text(text = "\u26EA", fontSize = 10.sp)
-                Spacer(modifier = Modifier.width(5.dp))
+                Text(text = "\u26EA", fontSize = 11.sp)
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = period,
+                    text = period.displayName.uppercase(),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
-                    color = if (isGreat) AppColors.goldAccent else AppColors.mutedText
+                    color = AppColors.crimson
                 )
+                if (period.complete) {
+                    Text(
+                        text = "  \u00B7  ${FastingPeriods.dayLabel(language, period.dayIndex, period.total)}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AppColors.crimson.copy(alpha = 0.8f)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
         }

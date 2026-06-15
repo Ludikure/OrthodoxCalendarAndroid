@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.ui.components.CalendarTitle
+import com.orthodox.calendar.ui.components.FastingPeriodBanner
 import com.orthodox.calendar.ui.components.MonthHeaderBar
 import com.orthodox.calendar.ui.components.MonthListScreen
 import com.orthodox.calendar.ui.screen.datepicker.DatePickerSheet
@@ -118,6 +119,25 @@ fun CalendarTabScreen(
             onViewModeChange = { viewModel.setViewMode(it) },
             onMonthTap = { showDatePicker = true }
         )
+
+        // Fasting season banner (Great Lent, etc.) when the viewed month touches a
+        // season. Focal day = today if it's in view, otherwise the first in-season day.
+        val today = java.time.LocalDate.now().toString()
+        val focalDate = if (uiState.fastingPeriods.containsKey(today) &&
+            uiState.daysInMonth.any { it.gregorianDate == today }
+        ) {
+            today
+        } else {
+            uiState.daysInMonth.firstOrNull { uiState.fastingPeriods.containsKey(it.gregorianDate) }
+                ?.gregorianDate
+        }
+        focalDate?.let { uiState.fastingPeriods[it] }?.let { period ->
+            FastingPeriodBanner(
+                period = period,
+                localization = localization,
+                language = uiState.language
+            )
+        }
 
         // Calendar content - switch on view mode, or show offline/error state
         if (uiState.isOffline && uiState.daysInMonth.isEmpty()) {

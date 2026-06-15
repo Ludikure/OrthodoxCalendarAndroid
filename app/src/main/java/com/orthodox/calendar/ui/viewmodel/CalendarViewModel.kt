@@ -8,6 +8,8 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.AppTheme
 import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.CalendarDay
+import com.orthodox.calendar.data.model.FastingPeriodInfo
+import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.preferences.AppPreferences
 import com.orthodox.calendar.data.repository.CalendarRepository
@@ -25,6 +27,8 @@ data class CalendarUiState(
     val currentMonth: Int = LocalDate.now().monthValue,
     val currentYear: Int = LocalDate.now().year,
     val daysInMonth: List<CalendarDay> = emptyList(),
+    /** Fasting-season info per `gregorianDate`, computed across the loaded year. */
+    val fastingPeriods: Map<String, FastingPeriodInfo> = emptyMap(),
     val viewMode: ViewMode = ViewMode.LIST,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -151,10 +155,18 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 val days = repository.loadMonth(locale, year, month)
+                // The full year is already cached by loadMonth; compute season runs
+                // (start/end + day index) across it so spans crossing months resolve.
+                val names = _uiState.value.localization?.fastingPeriodNames ?: emptyMap()
+                val spans = FastingPeriods.computeSpans(
+                    repository.load(locale, year).days.values.toList(),
+                    names
+                )
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         daysInMonth = days,
+                        fastingPeriods = spans,
                         loadedLocale = locale,
                         errorMessage = null,
                         isOffline = false

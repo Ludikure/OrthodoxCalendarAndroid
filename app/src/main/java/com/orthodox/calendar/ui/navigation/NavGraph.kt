@@ -73,6 +73,7 @@ fun NavGraph(
                     localization = localization,
                     language = uiState.language,
                     bibleTranslation = uiState.bibleTranslation,
+                    periodInfo = uiState.fastingPeriods[gregorianDate],
                     onBack = { navController.popBackStack() },
                     onAddReminder = {
                         navController.navigate("reminder/$gregorianDate")

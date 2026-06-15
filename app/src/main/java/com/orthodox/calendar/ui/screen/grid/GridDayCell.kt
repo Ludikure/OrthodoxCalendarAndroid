@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -131,6 +132,19 @@ fun GridDayCell(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(3.dp)
+            )
+        }
+
+        // Fasting-season marker (Great Lent, Nativity Fast, ...)
+        if (day.fastingPeriod != null && !isPascha) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 2.dp)
+                    .width(14.dp)
+                    .height(2.5.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(AppColors.crimson.copy(alpha = 0.7f))
             )
         }
     }

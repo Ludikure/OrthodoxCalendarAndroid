@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
+import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
 
@@ -114,6 +115,17 @@ fun SelectedDayCard(
                         color = if (isPascha) Color.White.copy(alpha = 0.7f) else AppColors.mutedText
                     )
                 }
+            }
+
+            // Fasting season (Great Lent, Nativity Fast, ...)
+            day.fastingPeriod?.let { code ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "⛪ " + FastingPeriods.displayName(code, localization.fastingPeriodNames),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isPascha) AppColors.goldAccent else AppColors.crimson
+                )
             }
         }
     }
