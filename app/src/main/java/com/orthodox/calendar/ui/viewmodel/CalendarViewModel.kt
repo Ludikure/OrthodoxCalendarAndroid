@@ -149,6 +149,27 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         loadMonth()
     }
 
+    /**
+     * Days used to compute fasting-season spans. Normally just the cached year,
+     * but when a boundary month (Nov/Dec/Jan) ends/starts inside a season we also
+     * merge the adjacent year so a season straddling the year boundary (the
+     * Nativity Fast, Nov 28 – Jan 6) resolves to its true dates. The neighbour is
+     * pulled only in those months — never on a normal launch — and failure to
+     * fetch it (offline / out of range) falls back to the single year.
+     */
+    private suspend fun seasonDays(locale: String, year: Int, month: Int): List<CalendarDay> {
+        val current = repository.load(locale, year).days.values.toList()
+        val sorted = current.sortedBy { it.gregorianDate }
+        val merged = ArrayList(current)
+        if (month >= 11 && sorted.lastOrNull()?.fastingPeriod != null) {
+            runCatching { merged += repository.load(locale, year + 1).days.values }
+        }
+        if (month == 1 && sorted.firstOrNull()?.fastingPeriod != null) {
+            runCatching { merged += repository.load(locale, year - 1).days.values }
+        }
+        return merged
+    }
+
     private fun loadData(locale: String, month: Int, year: Int) {
         _uiState.update { it.copy(isLoading = true, errorMessage = null, isOffline = false) }
 
@@ -158,10 +179,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 // The full year is already cached by loadMonth; compute season runs
                 // (start/end + day index) across it so spans crossing months resolve.
                 val names = _uiState.value.localization?.fastingPeriodNames ?: emptyMap()
-                val spans = FastingPeriods.computeSpans(
-                    repository.load(locale, year).days.values.toList(),
-                    names
-                )
+                val spans = FastingPeriods.computeSpans(seasonDays(locale, year, month), names)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
