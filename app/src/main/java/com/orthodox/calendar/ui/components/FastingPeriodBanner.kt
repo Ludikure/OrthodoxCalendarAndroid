@@ -37,7 +37,7 @@ fun FastingPeriodBanner(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .background(
-                AppColors.crimson.copy(alpha = 0.10f),
+                AppColors.gold.copy(alpha = 0.18f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 14.dp, vertical = 10.dp)
