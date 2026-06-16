@@ -37,7 +37,7 @@ fun FastingPeriodBanner(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .background(
-                AppColors.gold.copy(alpha = 0.18f),
+                AppColors.bannerBg,
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -49,7 +49,7 @@ fun FastingPeriodBanner(
                 text = period.displayName,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppColors.crimson
+                color = AppColors.bannerTitle
             )
             // Only show the date range + "Day X of Y" when the run is fully known
             // (a season truncated at the data boundary would mislead).
@@ -58,7 +58,7 @@ fun FastingPeriodBanner(
                     text = "${FastingPeriods.dateRange(period, localization.ui.months)}  ·  " +
                         FastingPeriods.dayLabel(language, period.dayIndex, period.total),
                     fontSize = 12.sp,
-                    color = AppColors.crimson.copy(alpha = 0.75f)
+                    color = AppColors.bannerSubtext
                 )
             }
         }

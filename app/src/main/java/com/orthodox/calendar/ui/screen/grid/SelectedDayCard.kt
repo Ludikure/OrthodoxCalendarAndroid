@@ -124,7 +124,7 @@ fun SelectedDayCard(
                     text = "⛪ " + FastingPeriods.displayName(code, localization.fastingPeriodNames),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (isPascha) AppColors.goldAccent else AppColors.crimson
+                    color = if (isPascha) AppColors.goldAccent else AppColors.bannerTitle
                 )
             }
         }

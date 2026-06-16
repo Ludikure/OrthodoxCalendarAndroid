@@ -57,6 +57,19 @@ object AppColors {
         @Composable get() = if (LocalIsDarkTheme.current)
             Color(0xFFBFB3A1) else Color(0xFF5C5040)
 
+    // Fasting-season banner/badge — soft liturgical parchment with burgundy text.
+    val bannerBg: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFF322B1C) else Color(0xFFEFE2BC)
+
+    val bannerTitle: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFFDCC089) else Color(0xFF7A1F1A)
+
+    val bannerSubtext: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFF9A8A72) else Color(0xFF6B5B4A)
+
     // Fasting badge backgrounds
     val fastStrictBg: Color
         @Composable get() = if (LocalIsDarkTheme.current)

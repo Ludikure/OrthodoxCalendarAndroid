@@ -198,7 +198,7 @@ private fun HeroSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .background(
-                        AppColors.gold.copy(alpha = 0.18f),
+                        AppColors.bannerBg,
                         shape = RoundedCornerShape(8.dp)
                     )
                     .padding(horizontal = 10.dp, vertical = 5.dp)
@@ -210,14 +210,14 @@ private fun HeroSection(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
-                    color = AppColors.crimson
+                    color = AppColors.bannerTitle
                 )
                 if (period.complete) {
                     Text(
                         text = "  \u00B7  ${FastingPeriods.dayLabel(language, period.dayIndex, period.total)}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = AppColors.crimson.copy(alpha = 0.8f)
+                        color = AppColors.bannerSubtext
                     )
                 }
             }
