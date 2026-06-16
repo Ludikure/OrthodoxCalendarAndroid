@@ -4,7 +4,7 @@
     "script": "latin",
 
     "ui": {
-        "loadingLabel": "Loading\u2026",
+        "loadingLabel": "Loading…",
         "offlineMessage": "Couldn't load data. Check your connection.",
         "updateRequiredTitle": "Update Required",
         "updateRequiredMessage": "A new version is required to continue. Please update the app.",
