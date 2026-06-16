@@ -58,7 +58,9 @@ fun CalendarTabScreen(
     val view = LocalView.current
 
     var showDatePicker by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    // skipPartiallyExpanded so the sheet opens fully and the Today button at the
+    // bottom is visible without dragging it up.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
     Column(

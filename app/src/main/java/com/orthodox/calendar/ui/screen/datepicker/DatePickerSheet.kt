@@ -95,15 +95,7 @@ fun DatePickerSheet(
             .fillMaxWidth()
             .padding(bottom = 16.dp)
     ) {
-        // Drag handle
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 10.dp, bottom = 6.dp)
-                .size(width = 36.dp, height = 4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color.Gray.copy(alpha = 0.3f))
-        )
+        // (Drag handle is provided by ModalBottomSheet itself.)
 
         // Title + close
         Row(
