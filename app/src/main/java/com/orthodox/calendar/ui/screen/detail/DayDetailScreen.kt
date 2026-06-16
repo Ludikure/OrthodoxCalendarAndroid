@@ -198,7 +198,7 @@ private fun HeroSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .background(
-                        AppColors.crimson.copy(alpha = 0.12f),
+                        AppColors.gold.copy(alpha = 0.18f),
                         shape = RoundedCornerShape(8.dp)
                     )
                     .padding(horizontal = 10.dp, vertical = 5.dp)
