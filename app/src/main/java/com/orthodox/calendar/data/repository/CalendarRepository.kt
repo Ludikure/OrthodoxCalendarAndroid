@@ -26,6 +26,8 @@ class CalendarRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val cache = mutableMapOf<String, CalendarFile>()
+    /** Per-locale deduped bio text pool (bios_<locale>.json), loaded lazily. */
+    private val biosCache = mutableMapOf<String, Map<String, String>>()
 
     /** Public API base. Mirrors the bundle data via R2. */
     private val baseUrl = "https://orthodox-calendar-api.ludikure.workers.dev"
@@ -60,13 +62,41 @@ class CalendarRepository(private val context: Context) {
         cache[key]?.let { return it }
 
         (decode(bundleData(key)) ?: decode(diskData(key)))?.let { file ->
-            cache[key] = file
-            return file
+            val resolved = resolveBios(file, locale)
+            cache[key] = resolved
+            return resolved
         }
 
-        val file = fetch(locale, year, key)
+        val file = resolveBios(fetch(locale, year, key), locale)
         cache[key] = file
         return file
+    }
+
+    /**
+     * Fills [SaintBio.text] from the per-locale pool for deduped bundled data.
+     * No-op for API-streamed data (bios already carry their text, no `ref`).
+     */
+    private fun resolveBios(file: CalendarFile, locale: String): CalendarFile {
+        val needs = file.days.values.any { d -> d.saintBios?.any { it.ref != null } == true }
+        if (!needs) return file
+        val pool = biosPool(locale)
+        val days = file.days.mapValues { (_, day) ->
+            val bios = day.saintBios ?: return@mapValues day
+            day.copy(saintBios = bios.map { b ->
+                if (b.ref != null && b.text.isEmpty()) b.copy(text = pool[b.ref] ?: "") else b
+            })
+        }
+        return file.copy(days = days)
+    }
+
+    private fun biosPool(locale: String): Map<String, String> = biosCache.getOrPut(locale) {
+        try {
+            val s = context.assets.open("localization/bios_${locale}.json")
+                .bufferedReader().use { it.readText() }
+            json.decodeFromString<Map<String, String>>(s)
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 
     // MARK: - Sources
