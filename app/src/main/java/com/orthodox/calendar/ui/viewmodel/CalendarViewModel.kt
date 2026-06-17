@@ -43,7 +43,7 @@ data class CalendarUiState(
     val scrollToTodayTrigger: Boolean = false
 ) {
     companion object {
-        const val MIN_YEAR = 2024
+        const val MIN_YEAR = 2025
         const val MAX_YEAR = 2030
     }
 }
@@ -198,10 +198,6 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                         errorMessage = null,
                         isOffline = false
                     )
-                }
-            } catch (offline: CalendarRepository.LoadError.Offline) {
-                _uiState.update {
-                    it.copy(isLoading = false, isOffline = true, errorMessage = "offline")
                 }
             } catch (c: CancellationException) {
                 throw c // superseded by a newer load — don't surface as an error

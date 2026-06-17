@@ -11,7 +11,10 @@ data class ScriptureReading(
     val zachalo: Int? = null,
     val text: String? = null,             // KJV NT / Brenton (Septuagint) OT
     val textWeb: String? = null,          // WEB NT (English only); null otherwise
-    val service: String? = null           // "Jutrenya", "Liturgija", etc.
+    val service: String? = null,          // "Jutrenya", "Liturgija", etc.
+    // Deduped bundled data: text/textWeb live in the texts_<locale> pool, keyed here.
+    val textRef: String? = null,
+    val textWebRef: String? = null
 ) {
     /** Best available display string for this reading */
     val displayReference: String
