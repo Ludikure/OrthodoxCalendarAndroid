@@ -13,6 +13,8 @@ import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.preferences.AppPreferences
 import com.orthodox.calendar.data.repository.CalendarRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +53,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     private val repository = CalendarRepository(application)
     private val localizationManager = LocalizationManager(application)
     private val preferences = AppPreferences(application)
+
+    /** In-flight month/year load; cancelled when a newer navigation starts so
+     *  rapid year-switching can't stack concurrent ~50 MB streamed-year loads. */
+    private var loadJob: Job? = null
 
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
@@ -173,7 +179,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     private fun loadData(locale: String, month: Int, year: Int) {
         _uiState.update { it.copy(isLoading = true, errorMessage = null, isOffline = false) }
 
-        viewModelScope.launch {
+        // Cancel any in-flight load so quick navigation doesn't pile up
+        // concurrent large network fetches/decodes (which could OOM-crash).
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             try {
                 val days = repository.loadMonth(locale, year, month)
                 // The full year is already cached by loadMonth; compute season runs
@@ -194,6 +203,8 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 _uiState.update {
                     it.copy(isLoading = false, isOffline = true, errorMessage = "offline")
                 }
+            } catch (c: CancellationException) {
+                throw c // superseded by a newer load — don't surface as an error
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

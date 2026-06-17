@@ -4,12 +4,17 @@ import android.content.Context
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.CalendarFile
 import com.orthodox.calendar.data.model.LocalizationBundle
-import com.orthodox.calendar.data.network.ApiClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Loads a year of calendar data for a given locale, resolving in order:
@@ -22,12 +27,16 @@ import java.io.IOException
  * the cache directory so a year stays available offline once viewed. Because the
  * current years are bundled, "today" never depends on the network.
  */
+@OptIn(ExperimentalSerializationApi::class)
 class CalendarRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val cache = mutableMapOf<String, CalendarFile>()
     /** Per-locale deduped bio text pool (bios_<locale>.json), loaded lazily. */
     private val biosCache = mutableMapOf<String, Map<String, String>>()
+    /** Serializes uncached year loads so concurrent navigation can't run several
+     *  large (~50 MB) network/decode operations at once and exhaust the heap. */
+    private val loadMutex = Mutex()
 
     /** Public API base. Mirrors the bundle data via R2. */
     private val baseUrl = "https://orthodox-calendar-api.ludikure.workers.dev"
@@ -61,15 +70,17 @@ class CalendarRepository(private val context: Context) {
 
         cache[key]?.let { return it }
 
-        (decode(bundleData(key)) ?: decode(diskData(key)))?.let { file ->
-            val resolved = resolveBios(file, locale)
-            cache[key] = resolved
-            return resolved
+        // Only one uncached load at a time: a newer navigation cancels its waiter
+        // here (see ViewModel) so we never decode several big years concurrently.
+        return loadMutex.withLock {
+            cache[key]?.let { return@withLock it }
+            val file = withContext(Dispatchers.IO) {
+                (decodeAsset(key) ?: decodeDisk(key))?.let { resolveBios(it, locale) }
+                    ?: resolveBios(fetch(locale, year, key), locale)
+            }
+            cache[key] = file
+            file
         }
-
-        val file = resolveBios(fetch(locale, year, key), locale)
-        cache[key] = file
-        return file
     }
 
     /**
@@ -91,48 +102,54 @@ class CalendarRepository(private val context: Context) {
 
     private fun biosPool(locale: String): Map<String, String> = biosCache.getOrPut(locale) {
         try {
-            val s = context.assets.open("localization/bios_${locale}.json")
-                .bufferedReader().use { it.readText() }
-            json.decodeFromString<Map<String, String>>(s)
+            // Stream-decode: the RU pool is ~36 MB; readText() would briefly double it.
+            context.assets.open("localization/bios_${locale}.json").use {
+                json.decodeFromStream<Map<String, String>>(it)
+            }
         } catch (e: Exception) {
             emptyMap()
         }
     }
 
-    // MARK: - Sources
+    // MARK: - Sources (stream-decode everywhere so a ~50 MB year never becomes a String)
 
-    private fun bundleData(key: String): String? = try {
-        context.assets.open("localization/$key.json").bufferedReader().use { it.readText() }
+    private fun decodeAsset(key: String): CalendarFile? = try {
+        context.assets.open("localization/$key.json").use { json.decodeFromStream<CalendarFile>(it) }
     } catch (e: Exception) {
         null
     }
 
-    private fun diskData(key: String): String? =
-        diskFile(key).takeIf { it.exists() }?.let {
-            try {
-                it.readText()
-            } catch (e: Exception) {
-                null
-            }
+    private fun decodeDisk(key: String): CalendarFile? {
+        val f = diskFile(key)
+        if (!f.exists()) return null
+        return try {
+            f.inputStream().use { json.decodeFromStream<CalendarFile>(it) }
+        } catch (e: Exception) {
+            null
         }
+    }
 
-    private suspend fun fetch(locale: String, year: Int, key: String): CalendarFile {
-        val response = try {
-            ApiClient.get("$baseUrl/api/$locale/$year")
+    private fun fetch(locale: String, year: Int, key: String): CalendarFile {
+        val conn = (URL("$baseUrl/api/$locale/$year").openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout = 60_000
+        }
+        try {
+            if (conn.responseCode != 200) throw LoadError.NotFound
+            // Stream the response straight to disk (constant memory), then decode
+            // from the file as a stream — avoids holding the whole 50 MB in memory.
+            conn.inputStream.use { input ->
+                diskFile(key).outputStream().use { output -> input.copyTo(output) }
+            }
+            return decodeDisk(key) ?: throw LoadError.NotFound
+        } catch (e: LoadError) {
+            throw e
         } catch (e: IOException) {
             throw LoadError.Offline
+        } finally {
+            conn.disconnect()
         }
-
-        if (response.statusCode != 200) throw LoadError.NotFound
-        val file = decode(response.body) ?: throw LoadError.NotFound
-
-        // Persist the raw bytes for offline reuse; failure here is non-fatal.
-        try {
-            diskFile(key).writeText(response.body)
-        } catch (e: Exception) {
-            // ignore
-        }
-        return file
     }
 
     // MARK: - Disk cache
@@ -141,15 +158,6 @@ class CalendarRepository(private val context: Context) {
         File(context.cacheDir, "calendar").apply { mkdirs() }
 
     private fun diskFile(key: String): File = File(cacheDirectory(), "$key.json")
-
-    private fun decode(jsonString: String?): CalendarFile? {
-        if (jsonString == null) return null
-        return try {
-            json.decodeFromString<CalendarFile>(jsonString)
-        } catch (e: Exception) {
-            null
-        }
-    }
 
     // MARK: - Localization (bundled only)
 
