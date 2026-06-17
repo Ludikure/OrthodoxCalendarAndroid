@@ -14,13 +14,16 @@ object ApiClient {
 
     data class Response(val statusCode: Int, val body: String)
 
-    private const val TIMEOUT_MS = 15_000
+    private const val CONNECT_TIMEOUT_MS = 15_000
+    // Generous read timeout: the Russian year files are ~50 MB and can take a
+    // while to stream over slow mobile connections.
+    private const val READ_TIMEOUT_MS = 60_000
 
     suspend fun get(url: String): Response = withContext(Dispatchers.IO) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = READ_TIMEOUT_MS
         }
         try {
             val status = connection.responseCode
