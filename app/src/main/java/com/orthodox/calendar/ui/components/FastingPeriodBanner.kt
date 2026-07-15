@@ -29,7 +29,11 @@ fun FastingPeriodBanner(
     period: FastingPeriodInfo,
     localization: LocalizationBundle,
     language: AppLanguage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // "Day X of Y" is only meaningful for today. As a month overview (browsing a
+    // season that isn't currently active) the focal day isn't today, so its index
+    // would be an arbitrary position in the run — hide it, show the range alone.
+    showsDayIndex: Boolean = true
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -51,12 +55,17 @@ fun FastingPeriodBanner(
                 fontWeight = FontWeight.Bold,
                 color = AppColors.bannerTitle
             )
-            // Only show the date range + "Day X of Y" when the run is fully known
-            // (a season truncated at the data boundary would mislead).
+            // Date range only when the run is fully known (a season truncated at
+            // the data boundary would mislead); the "Day X of Y" suffix only when
+            // it refers to today.
             if (period.complete) {
+                val range = FastingPeriods.dateRange(period, localization.ui.months)
                 Text(
-                    text = "${FastingPeriods.dateRange(period, localization.ui.months)}  ·  " +
-                        FastingPeriods.dayLabel(language, period.dayIndex, period.total),
+                    text = if (showsDayIndex) {
+                        "$range  ·  ${FastingPeriods.dayLabel(language, period.dayIndex, period.total)}"
+                    } else {
+                        range
+                    },
                     fontSize = 12.sp,
                     color = AppColors.bannerSubtext
                 )

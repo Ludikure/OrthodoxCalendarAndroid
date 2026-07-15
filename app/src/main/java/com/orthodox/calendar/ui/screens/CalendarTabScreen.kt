@@ -122,13 +122,17 @@ fun CalendarTabScreen(
             onMonthTap = { showDatePicker = true }
         )
 
-        // Fasting season banner (Great Lent, etc.) when the viewed month touches a
-        // season. Focal day = today if it's in view, otherwise the first in-season day.
+        // Fasting season banner (Great Lent, etc.). When today is in the viewed
+        // month the banner reflects *today's* status: its season if we're in one,
+        // otherwise nothing — we must not fall back to a fast that has already
+        // ended (or not yet begun) elsewhere in the month, which would show e.g.
+        // "Day 24 of 34" of the Apostles' Fast days after it ended. When browsing
+        // another month we show that month's season as an overview (name + range,
+        // no day index — there is no "current day" there).
         val today = java.time.LocalDate.now().toString()
-        val focalDate = if (uiState.fastingPeriods.containsKey(today) &&
-            uiState.daysInMonth.any { it.gregorianDate == today }
-        ) {
-            today
+        val todayInView = uiState.daysInMonth.any { it.gregorianDate == today }
+        val focalDate = if (todayInView) {
+            today.takeIf { uiState.fastingPeriods.containsKey(it) }
         } else {
             uiState.daysInMonth.firstOrNull { uiState.fastingPeriods.containsKey(it.gregorianDate) }
                 ?.gregorianDate
@@ -137,7 +141,8 @@ fun CalendarTabScreen(
             FastingPeriodBanner(
                 period = period,
                 localization = localization,
-                language = uiState.language
+                language = uiState.language,
+                showsDayIndex = todayInView
             )
         }
 
