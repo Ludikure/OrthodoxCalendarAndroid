@@ -43,8 +43,11 @@ data class CalendarUiState(
     val scrollToTodayTrigger: Boolean = false
 ) {
     companion object {
-        const val MIN_YEAR = 2025
-        const val MAX_YEAR = 2030
+        /** Bounds of the v2 archive on the Worker (2024-2099; the pipeline's
+         *  Julian+13 date math holds through 2099). Years inside the bundled
+         *  window load offline; the rest download once and cache on device. */
+        const val MIN_YEAR = 2024
+        const val MAX_YEAR = 2099
     }
 }
 
@@ -168,10 +171,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         val sorted = current.sortedBy { it.gregorianDate }
         val merged = ArrayList(current)
         if (month >= 11 && sorted.lastOrNull()?.fastingPeriod != null) {
-            runCatching { merged += repository.load(locale, year + 1).days.values }
+            runCatching { merged += repository.load(locale, year + 1, allowNetwork = false).days.values }
         }
         if (month == 1 && sorted.firstOrNull()?.fastingPeriod != null) {
-            runCatching { merged += repository.load(locale, year - 1).days.values }
+            runCatching { merged += repository.load(locale, year - 1, allowNetwork = false).days.values }
         }
         return merged
     }
@@ -205,8 +208,8 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        isOffline = false,
-                        errorMessage = "No data for $locale $year",
+                        isOffline = e is CalendarRepository.LoadError.Offline,
+                        errorMessage = "Unable to load $year",
                         daysInMonth = emptyList()
                     )
                 }

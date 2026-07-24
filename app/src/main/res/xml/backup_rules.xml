@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Downloaded calendar years are re-fetchable from the v2 archive; keep them
+     out of backups (mirrors iOS isExcludedFromBackup on the cache dir). -->
+<full-backup-content>
+    <exclude domain="file" path="calendar_cache" />
+</full-backup-content>

@@ -4,19 +4,27 @@ import android.content.Context
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.CalendarFile
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.data.network.ApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
+import java.io.File
 
 /**
- * Loads a year of calendar data for a given locale from the app bundle.
+ * Loads a year of calendar data for a given locale.
  *
- * All supported years (MIN_YEAR..MAX_YEAR) ship bundled and deduplicated: large
- * text (saint bios + scripture readings) lives in a per-locale `texts_<locale>`
- * pool keyed by content hash, and the calendar files reference it. There is no
- * network path — the app is fully offline. Mirror of iOS `CalendarRepository`.
+ * Bundled years (assets/localization, the window copied from the iOS repo)
+ * resolve offline, exactly as before. Years outside the bundle come from the
+ * v2 archive on the Cloudflare Worker (deduplicated files, 2024-2099) and are
+ * cached permanently under filesDir/calendar_cache (excluded from backup), so
+ * each is downloaded at most once. Large text (saint bios + scripture
+ * readings) lives in a per-locale `texts_<locale>` pool keyed by content hash;
+ * bundled and downloaded files alike reference it. `/api/config`'s
+ * `dataRevision` invalidates the disk cache when the archive is regenerated.
+ * Mirror of iOS `CalendarRepository`.
  */
 @OptIn(ExperimentalSerializationApi::class)
 class CalendarRepository(private val context: Context) {
@@ -25,15 +33,20 @@ class CalendarRepository(private val context: Context) {
     private val cache = mutableMapOf<String, CalendarFile>()
     /** Per-locale deduped text pool (texts_<locale>.json), loaded lazily. */
     private val textsCache = mutableMapOf<String, Map<String, String>>()
+    /** Config revision is checked at most once per process, and only on the
+     *  network path — bundled years never touch the network. */
+    private var revisionChecked = false
 
     sealed class LoadError : Exception() {
-        /** No bundled data for this locale/year. */
+        /** No data exists for this locale/year. */
         object NotFound : LoadError()
+        /** Connectivity problem; retry may succeed. */
+        object Offline : LoadError()
     }
 
     private fun fileKey(locale: String, year: Int) = "calendar_${locale}_${year}"
 
-    /** Days for a single month; throws [LoadError] when the year isn't bundled. */
+    /** Days for a single month; throws [LoadError] when the year can't load. */
     suspend fun loadMonth(locale: String, year: Int, month: Int): List<CalendarDay> {
         val file = load(locale, year)
         val prefix = "%02d-".format(month)
@@ -44,18 +57,100 @@ class CalendarRepository(private val context: Context) {
             .map { it.value }
     }
 
-    /** Resolve a year from the bundle (decoded once, cached in memory). */
-    suspend fun load(locale: String, year: Int): CalendarFile {
+    /**
+     * Resolve a year: memory → assets → disk cache → network (cached to disk).
+     *
+     * [allowNetwork] false stops after the disk cache — used for neighbour
+     * years in season-span computation, which must never block a month render
+     * on a download.
+     */
+    suspend fun load(locale: String, year: Int, allowNetwork: Boolean = true): CalendarFile {
         val key = fileKey(locale, year)
         cache[key]?.let { return it }
-        val file = withContext(Dispatchers.IO) {
-            decodeAsset(key)?.let { resolveText(it, locale) } ?: throw LoadError.NotFound
+        var raw = withContext(Dispatchers.IO) { decodeAsset(key) ?: decodeDisk(key) }
+        if (raw == null) {
+            if (!allowNetwork) throw LoadError.NotFound
+            raw = download(locale, year, key)
         }
+        val file = withContext(Dispatchers.IO) { resolveText(raw, locale) }
         cache[key] = file
         return file
     }
 
-    /** Fills bio + reading text from the per-locale pool for deduped bundled data. */
+    // MARK: - Network
+
+    private suspend fun download(locale: String, year: Int, key: String): CalendarFile {
+        checkRevisionOnce()
+        val response = try {
+            ApiClient.get("$API_BASE/$locale/$year")
+        } catch (e: Exception) {
+            throw LoadError.Offline
+        }
+        when (response.statusCode) {
+            200 -> Unit
+            400, 404 -> throw LoadError.NotFound
+            else -> throw LoadError.Offline
+        }
+        val file = try {
+            json.decodeFromString<CalendarFile>(response.body)
+        } catch (e: Exception) {
+            throw LoadError.NotFound
+        }
+        withContext(Dispatchers.IO) {
+            runCatching {
+                cacheDir().mkdirs()
+                File(cacheDir(), "$key.json").writeText(response.body)
+            }
+        }
+        return file
+    }
+
+    /**
+     * Drops the disk cache when the server's archive revision moves past the
+     * one our cached files were downloaded under. Fails open: no connectivity
+     * or a malformed config leaves the cache as is.
+     */
+    private suspend fun checkRevisionOnce() {
+        if (revisionChecked) return
+        revisionChecked = true
+        val revision = try {
+            val response = ApiClient.get(CONFIG_URL)
+            if (response.statusCode != 200) return
+            json.decodeFromString<WorkerConfig>(response.body).dataRevision ?: return
+        } catch (e: Exception) {
+            return
+        }
+        withContext(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val stored = prefs.getInt(REVISION_KEY, 0)
+            if (stored != 0 && stored != revision) {
+                runCatching { cacheDir().deleteRecursively() }
+            }
+            prefs.edit().putInt(REVISION_KEY, revision).apply()
+        }
+    }
+
+    @Serializable
+    private data class WorkerConfig(val dataRevision: Int? = null)
+
+    // MARK: - Disk cache
+
+    private fun cacheDir() = File(context.filesDir, "calendar_cache")
+
+    private fun decodeDisk(key: String): CalendarFile? {
+        val file = File(cacheDir(), "$key.json")
+        if (!file.exists()) return null
+        return try {
+            file.inputStream().use { json.decodeFromStream<CalendarFile>(it) }
+        } catch (e: Exception) {
+            file.delete() // corrupted cache entry — refetch next time
+            null
+        }
+    }
+
+    // MARK: - Text pool resolution
+
+    /** Fills bio + reading text from the per-locale pool for deduped data. */
     private fun resolveText(file: CalendarFile, locale: String): CalendarFile {
         val needs = file.days.values.any { d ->
             d.saintBios?.any { it.ref != null } == true ||
@@ -108,4 +203,11 @@ class CalendarRepository(private val context: Context) {
                 null
             }
         }
+
+    companion object {
+        private const val API_BASE = "https://orthodox-calendar-api.ludikure.workers.dev/api/v2"
+        private const val CONFIG_URL = "https://orthodox-calendar-api.ludikure.workers.dev/api/config"
+        private const val PREFS_NAME = "calendar_cache_prefs"
+        private const val REVISION_KEY = "cachedDataRevision"
+    }
 }

@@ -147,7 +147,7 @@ fun CalendarTabScreen(
         }
 
         // Calendar content - switch on view mode, or show offline/error state
-        if (uiState.isOffline && uiState.daysInMonth.isEmpty()) {
+        if ((uiState.isOffline || uiState.errorMessage != null) && uiState.daysInMonth.isEmpty()) {
             CalendarLoadFailureView(
                 message = localization.ui.offlineMessage
                     ?: defaultOfflineMessage(uiState.language),
