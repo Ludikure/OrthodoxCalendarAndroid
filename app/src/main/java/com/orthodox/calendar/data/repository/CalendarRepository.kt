@@ -174,10 +174,17 @@ class CalendarRepository(private val context: Context) {
         return file.copy(days = days)
     }
 
-    private fun textsPool(locale: String): Map<String, String> = textsCache.getOrPut(locale) {
+    /**
+     * The pool file a locale resolves against. en and en_nc show the same bios
+     * and the same scripture text, so they share `texts_en.json` — bundling a
+     * second, byte-identical copy cost 3 MB of assets.
+     */
+    private fun poolName(locale: String) = if (locale == "en_nc") "en" else locale
+
+    private fun textsPool(locale: String): Map<String, String> = textsCache.getOrPut(poolName(locale)) {
         try {
-            // Stream-decode: the RU pool is ~38 MB; readText() would briefly double it.
-            context.assets.open("localization/texts_${locale}.json").use {
+            // Stream-decode: the RU pool is ~17 MB; readText() would briefly double it.
+            context.assets.open("localization/texts_${poolName(locale)}.json").use {
                 json.decodeFromStream<Map<String, String>>(it)
             }
         } catch (e: Exception) {

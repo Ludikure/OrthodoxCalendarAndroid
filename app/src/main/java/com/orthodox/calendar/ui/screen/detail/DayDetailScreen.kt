@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -47,19 +48,8 @@ import com.orthodox.calendar.data.model.Feast
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
 import com.orthodox.calendar.data.model.SaintBio
+import com.orthodox.calendar.engine.BioMatcher
 import com.orthodox.calendar.ui.theme.AppColors
-
-// Common saint title prefixes -- too generic for matching
-private val commonWords: Set<String> = setOf(
-    "свети", "света", "светог", "светих", "светом",
-    "преподобни", "преподобна", "преподобног",
-    "мученик", "мученица", "мученици",
-    "свештеномученик", "великомученик",
-    "святой", "святая", "святых", "святителя",
-    "преподобный", "преподобная", "мученик",
-    "saint", "holy", "venerable", "martyr",
-    "blessed", "righteous"
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -329,10 +319,22 @@ private fun SaintsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
+        // Bios are paired with feasts once for the whole day: which feast a bio
+        // belongs to depends on what the other feasts claim, so it cannot be
+        // decided one card at a time.
+        val bios = day.saintBios.orEmpty()
+        val assigned = remember(day) {
+            BioMatcher.assign(
+                feastNames = day.feasts.map { it.name },
+                moveable = day.feasts.map { it.moveable },
+                bioTitles = bios.map { it.title }
+            )
+        }
+
         day.feasts.forEachIndexed { index, feast ->
             SaintCard(
                 feast = feast,
-                bio = findBio(day, feast, index),
+                bio = assigned[index]?.let { bios.getOrNull(it) },
                 localizedType = localizedSaintType(feast.type, language)
             )
             if (index < day.feasts.size - 1) {
@@ -434,46 +436,6 @@ private fun SectionDivider() {
             .height(1.dp)
             .background(AppColors.warmBorder)
     )
-}
-
-// Bio matching logic ported from iOS
-private fun findBio(day: CalendarDay, feast: Feast, index: Int): SaintBio? {
-    val bios = day.saintBios
-    if (bios.isNullOrEmpty()) return null
-    if (feast.moveable) return null
-
-    // Single bio per day (Serbian Ohridski Prolog): show on first non-moveable feast only
-    if (bios.size == 1) {
-        // Find first non-moveable feast index
-        val firstNonMoveableIndex = day.feasts.indexOfFirst { !it.moveable }
-        return if (index == firstNonMoveableIndex) bios[0] else null
-    }
-
-    // Multiple bios (EN/RU): match by significant keywords, each bio used once
-    val usedBioTitles = mutableSetOf<String>()
-    for (i in 0 until index) {
-        val f = day.feasts[i]
-        if (f.moveable) continue
-        val words = f.name.lowercase().split(" ")
-            .filter { it.length > 3 && it !in commonWords }
-        for (bio in bios) {
-            if (bio.title in usedBioTitles) continue
-            val bioLower = bio.title.lowercase()
-            if (words.any { bioLower.contains(it) }) {
-                usedBioTitles.add(bio.title)
-                break
-            }
-        }
-    }
-
-    // Match this feast to an unclaimed bio
-    val feastWords = feast.name.lowercase().split(" ")
-        .filter { it.length > 3 && it !in commonWords }
-
-    return bios.firstOrNull { bio ->
-        bio.title !in usedBioTitles &&
-            feastWords.any { bio.title.lowercase().contains(it) }
-    }
 }
 
 private fun localizedSaintType(type: String, language: AppLanguage): String {
