@@ -148,9 +148,15 @@ fun CalendarTabScreen(
 
         // Calendar content - switch on view mode, or show offline/error state
         if ((uiState.isOffline || uiState.errorMessage != null) && uiState.daysInMonth.isEmpty()) {
+            // Retrying only helps when the load failed on the network; blaming
+            // the connection for a year that simply has no data sends the user
+            // chasing wifi.
             CalendarLoadFailureView(
-                message = localization.ui.offlineMessage
-                    ?: defaultOfflineMessage(uiState.language),
+                message = if (uiState.isOffline) {
+                    localization.ui.offlineMessage ?: defaultOfflineMessage(uiState.language)
+                } else {
+                    defaultNoDataMessage(uiState.language, uiState.currentYear)
+                },
                 retryLabel = localization.ui.retryLabel
                     ?: defaultRetryLabel(uiState.language),
                 onRetry = { Haptics.medium(view); viewModel.retry() }
@@ -255,6 +261,18 @@ private fun defaultOfflineMessage(language: com.orthodox.calendar.data.model.App
         com.orthodox.calendar.data.model.AppLanguage.EN_NC ->
             "Couldn't load data. Check your connection."
     }
+
+/** A year the archive does not cover, as opposed to one that failed to download.
+ *  Kept here rather than in the shared `ui` strings so the two apps'
+ *  localization bundles stay byte-identical. */
+private fun defaultNoDataMessage(language: com.orthodox.calendar.data.model.AppLanguage, year: Int): String =
+    when (language) {
+        com.orthodox.calendar.data.model.AppLanguage.SR -> "Нема података за $year. годину."
+        com.orthodox.calendar.data.model.AppLanguage.RU -> "Нет данных за $year год."
+        com.orthodox.calendar.data.model.AppLanguage.EN,
+        com.orthodox.calendar.data.model.AppLanguage.EN_NC -> "No calendar data for $year."
+    }
+
 
 private fun defaultRetryLabel(language: com.orthodox.calendar.data.model.AppLanguage): String =
     when (language) {

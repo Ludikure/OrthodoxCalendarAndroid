@@ -1,8 +1,10 @@
 package com.orthodox.calendar.ui.screen.reminder
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.provider.CalendarContract
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,7 +43,7 @@ import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +76,11 @@ fun AddReminderScreen(
         AppLanguage.SR -> "\u0414\u0430\u0442\u0443\u043C"
         AppLanguage.RU -> "\u0414\u0430\u0442\u0430"
         AppLanguage.EN, AppLanguage.EN_NC -> "Date"
+    }
+    val noCalendarAppText = when (language) {
+        AppLanguage.SR -> "Није пронађена апликација календара."
+        AppLanguage.RU -> "Приложение календаря не найдено."
+        AppLanguage.EN, AppLanguage.EN_NC -> "No calendar app found."
     }
     val notesLabel = when (language) {
         AppLanguage.SR -> "\u0411\u0435\u043B\u0435\u0448\u043A\u0435"
@@ -145,8 +152,11 @@ fun AddReminderScreen(
 
             Button(
                 onClick = {
-                    addCalendarEvent(context, day, title, notes)
-                    onBack()
+                    if (addCalendarEvent(context, day, title, notes)) {
+                        onBack()
+                    } else {
+                        Toast.makeText(context, noCalendarAppText, Toast.LENGTH_LONG).show()
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.crimson),
                 shape = RoundedCornerShape(12.dp),
@@ -163,9 +173,13 @@ fun AddReminderScreen(
     }
 }
 
-private fun addCalendarEvent(context: Context, day: CalendarDay, title: String, notes: String) {
+/** Hands the event to the user's calendar app. False when there is none. */
+private fun addCalendarEvent(context: Context, day: CalendarDay, title: String, notes: String): Boolean {
     val date = day.date ?: LocalDate.parse(day.gregorianDate)
-    val startMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    // CalendarContract defines an all-day event in UTC — its start must be
+    // midnight UTC, not local midnight, or calendar apps in zones east of UTC
+    // file the feast on the day before.
+    val startMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 
     val intent = Intent(Intent.ACTION_INSERT).apply {
         data = CalendarContract.Events.CONTENT_URI
@@ -177,5 +191,11 @@ private fun addCalendarEvent(context: Context, day: CalendarDay, title: String, 
             putExtra(CalendarContract.Events.DESCRIPTION, notes)
         }
     }
-    context.startActivity(intent)
+    return try {
+        context.startActivity(intent)
+        true
+    } catch (e: ActivityNotFoundException) {
+        // No app handles ACTION_INSERT — startActivity would take the app down.
+        false
+    }
 }

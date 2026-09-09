@@ -114,7 +114,16 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(viewMode = mode) }
     }
 
+    /** At the first/last month the archive covers — the chevrons stop here.
+     *  Stepping outside loads nothing and strands the user on an empty month. */
+    fun atFirstMonth(state: CalendarUiState = _uiState.value) =
+        state.currentYear <= CalendarUiState.MIN_YEAR && state.currentMonth <= 1
+
+    fun atLastMonth(state: CalendarUiState = _uiState.value) =
+        state.currentYear >= CalendarUiState.MAX_YEAR && state.currentMonth >= 12
+
     fun goToPreviousMonth() {
+        if (atFirstMonth()) return
         _uiState.update {
             if (it.currentMonth == 1) {
                 it.copy(currentMonth = 12, currentYear = it.currentYear - 1)
@@ -126,6 +135,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun goToNextMonth() {
+        if (atLastMonth()) return
         _uiState.update {
             if (it.currentMonth == 12) {
                 it.copy(currentMonth = 1, currentYear = it.currentYear + 1)

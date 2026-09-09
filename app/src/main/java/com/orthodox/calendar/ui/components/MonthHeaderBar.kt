@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.viewmodel.CalendarUiState
 import com.orthodox.calendar.ui.viewmodel.ViewMode
 
 private val headerColor = Color(0xFF7A1B1B)
@@ -48,11 +49,19 @@ fun MonthHeaderBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val view = LocalView.current
+        // The archive covers 2024-2099; stepping outside it loads nothing and
+        // strands the user on an empty month. The date picker already stops here.
+        val atFirstMonth = currentYear <= CalendarUiState.MIN_YEAR && currentMonth <= 1
+        val atLastMonth = currentYear >= CalendarUiState.MAX_YEAR && currentMonth >= 12
         // Previous month
-        IconButton(onClick = { Haptics.selection(view); onPreviousMonth() }, modifier = Modifier.size(40.dp)) {
+        IconButton(
+            onClick = { Haptics.selection(view); onPreviousMonth() },
+            enabled = !atFirstMonth,
+            modifier = Modifier.size(40.dp)
+        ) {
             Text(
                 text = "\u276E",
-                color = Color.White,
+                color = Color.White.copy(alpha = if (atFirstMonth) 0.3f else 1f),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -100,10 +109,14 @@ fun MonthHeaderBar(
         }
 
         // Next month
-        IconButton(onClick = { Haptics.selection(view); onNextMonth() }, modifier = Modifier.size(40.dp)) {
+        IconButton(
+            onClick = { Haptics.selection(view); onNextMonth() },
+            enabled = !atLastMonth,
+            modifier = Modifier.size(40.dp)
+        ) {
             Text(
                 text = "\u276F",
-                color = Color.White,
+                color = Color.White.copy(alpha = if (atLastMonth) 0.3f else 1f),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold
             )
