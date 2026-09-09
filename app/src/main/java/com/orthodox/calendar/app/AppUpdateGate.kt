@@ -43,6 +43,11 @@ class AppUpdateGate {
 
     val installedVersion: String get() = BuildConfig.VERSION_NAME
 
+    private fun isStoreUrl(url: String): Boolean = runCatching {
+        val uri = java.net.URI(url)
+        uri.scheme == "https" && uri.host in setOf("play.google.com", "market.android.com")
+    }.getOrDefault(false)
+
     suspend fun check() {
         val config = try {
             val response = ApiClient.get(configUrl)
@@ -55,8 +60,10 @@ class AppUpdateGate {
         }
 
         // Prefer a Play Store URL; fall back to the Play listing by package id.
-        storeUrl = config.playStoreUrl
-            ?: "https://play.google.com/store/apps/details?id=${BuildConfig.APPLICATION_ID}"
+        // A server-supplied URL is only followed when it points at the store;
+        // anything else falls back to this app's own listing.
+        val fallback = "https://play.google.com/store/apps/details?id=${BuildConfig.APPLICATION_ID}"
+        storeUrl = config.playStoreUrl?.takeIf { isStoreUrl(it) } ?: fallback
 
         if (isOlder(installedVersion, config.minVersion)) {
             _mustUpdate.value = true

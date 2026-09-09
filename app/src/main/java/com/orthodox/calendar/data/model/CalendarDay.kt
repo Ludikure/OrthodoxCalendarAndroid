@@ -3,6 +3,7 @@ package com.orthodox.calendar.data.model
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Serializable
 data class CalendarDay(
@@ -82,6 +83,6 @@ data class CalendarDay(
         }
 
     companion object {
-        private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT)
     }
 }

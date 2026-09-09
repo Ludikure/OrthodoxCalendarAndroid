@@ -35,6 +35,7 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun CalendarGridScreen(
@@ -45,7 +46,7 @@ fun CalendarGridScreen(
     onDayClick: (CalendarDay) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT))
     var selectedDay by remember(loadedLocale, days.size) { mutableStateOf<CalendarDay?>(null) }
 
     // Auto-select today or first day

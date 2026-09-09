@@ -47,13 +47,5 @@ class LocalizationManager(private val context: Context) {
         }
     }
 
-    fun localizedMonthName(bundle: LocalizationBundle, month: Int): String {
-        if (month < 1 || month > 12) return ""
-        return bundle.ui.months[month - 1]
-    }
 
-    fun localizedDayOfWeek(bundle: LocalizationBundle, weekday: Int): String {
-        if (weekday < 0 || weekday > 6) return ""
-        return bundle.ui.daysOfWeek[weekday]
-    }
 }

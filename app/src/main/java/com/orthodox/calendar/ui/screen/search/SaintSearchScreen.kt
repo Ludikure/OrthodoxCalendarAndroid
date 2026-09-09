@@ -47,6 +47,9 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.ui.theme.AppColors
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlinx.coroutines.delay
 
 data class SaintSearchResult(
@@ -115,24 +118,25 @@ fun SaintSearchScreen(
             return@LaunchedEffect
         }
 
-        val found = mutableListOf<SaintSearchResult>()
-        for ((_, day) in calFile.days) {
-            for (feast in day.feasts) {
-                if (feast.name.lowercase().contains(q)) {
-                    found.add(
-                        SaintSearchResult(
+        // Off the composition dispatcher: this walks every feast of every day
+        // and used to lowercase each name on every keystroke.
+        results = withContext(Dispatchers.Default) {
+            calFile.days.values
+                .flatMap { day ->
+                    day.feasts.mapNotNull { feast ->
+                        if (!feast.name.contains(q, ignoreCase = true)) null
+                        else SaintSearchResult(
                             matchedText = feast.name,
                             gregorianMonth = day.gregorianMonth,
                             gregorianDay = day.gregorianDay
                         )
-                    )
+                    }
                 }
-            }
+                // The same saint recurs across a year; show each name once per day.
+                .distinctBy { "${it.gregorianMonth}-${it.gregorianDay}-${it.matchedText}" }
+                .sortedBy { String.format(Locale.ROOT, "%02d-%02d", it.gregorianMonth, it.gregorianDay) }
+                .take(MAX_RESULTS)
         }
-
-        results = found
-            .sortedBy { String.format("%02d-%02d", it.gregorianMonth, it.gregorianDay) }
-            .take(50)
     }
 
     // Auto-focus search field
@@ -233,3 +237,6 @@ fun SaintSearchScreen(
         }
     }
 }
+
+/** Enough to scan without turning the list into its own navigation problem. */
+private const val MAX_RESULTS = 50

@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalView
 import com.orthodox.calendar.ui.util.Haptics
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -88,24 +95,22 @@ fun CalendarTabScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Search icon
-            Text(
-                text = "\uD83D\uDD0D",
-                fontSize = 18.sp,
-                modifier = Modifier
-                    .clickable { Haptics.light(view); onSearchClick() }
-                    .padding(horizontal = 8.dp)
-            )
-
-            // Settings icon
-            Text(
-                text = "\u2699",
-                fontSize = 20.sp,
-                color = AppColors.mutedText,
-                modifier = Modifier
-                    .clickable { Haptics.light(view); onSettingsClick() }
-                    .padding(horizontal = 8.dp)
-            )
+            // Real icon buttons: an emoji in a Text has no button role, no label
+            // for TalkBack, and renders differently on every vendor's font.
+            IconButton(onClick = { Haptics.light(view); onSearchClick() }) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = defaultSearchLabel(uiState.language),
+                    tint = AppColors.mutedText
+                )
+            }
+            IconButton(onClick = { Haptics.light(view); onSettingsClick() }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = localization.ui.settingsLabel,
+                    tint = AppColors.mutedText
+                )
+            }
         }
 
         CalendarTitle(
@@ -144,12 +149,29 @@ fun CalendarTabScreen(
                 period = period,
                 localization = localization,
                 language = uiState.language,
-                showsDayIndex = todayInView
+                // `complete` is false when the run touches the edge of the loaded
+                // data — a fast crossing a year boundary looks like two short
+                // ones there, so its day index would be wrong rather than absent.
+                showsDayIndex = todayInView && period.complete
             )
         }
 
-        // Calendar content - switch on view mode, or show offline/error state
-        if ((uiState.isOffline || uiState.errorMessage != null) && uiState.daysInMonth.isEmpty()) {
+        // Calendar content - switch on view mode, or show loading/offline/error
+        if (uiState.isLoading && uiState.daysInMonth.isEmpty()) {
+            // A downloaded year takes a second or so; without this the screen
+            // is simply empty and reads as a hang.
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = AppColors.crimson)
+                localization.ui.loadingLabel?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = it, fontSize = 13.sp, color = AppColors.mutedText)
+                }
+            }
+        } else if ((uiState.isOffline || uiState.errorMessage != null) && uiState.daysInMonth.isEmpty()) {
             // Retrying only helps when the load failed on the network; blaming
             // the connection for a year that simply has no data sends the user
             // chasing wifi.
@@ -277,6 +299,15 @@ private fun defaultNoDataMessage(language: com.orthodox.calendar.data.model.AppL
         com.orthodox.calendar.data.model.AppLanguage.RU -> "Нет данных за $year год."
         com.orthodox.calendar.data.model.AppLanguage.EN,
         com.orthodox.calendar.data.model.AppLanguage.EN_NC -> "No calendar data for $year."
+    }
+
+
+private fun defaultSearchLabel(language: com.orthodox.calendar.data.model.AppLanguage): String =
+    when (language) {
+        com.orthodox.calendar.data.model.AppLanguage.SR -> "Претрага"
+        com.orthodox.calendar.data.model.AppLanguage.RU -> "Поиск"
+        com.orthodox.calendar.data.model.AppLanguage.EN,
+        com.orthodox.calendar.data.model.AppLanguage.EN_NC -> "Search"
     }
 
 

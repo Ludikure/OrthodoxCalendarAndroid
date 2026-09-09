@@ -19,6 +19,7 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun MonthListScreen(
@@ -30,7 +31,7 @@ fun MonthListScreen(
     onDayClick: (CalendarDay) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT))
     val listState = rememberLazyListState()
 
     // Scroll to today when trigger changes or days load

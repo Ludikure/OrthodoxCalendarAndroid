@@ -6,13 +6,20 @@ import com.orthodox.calendar.data.model.CalendarFile
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.network.ApiClient
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.File
+import java.util.Locale
 
 /**
  * Loads a year of calendar data for a given locale.
@@ -32,11 +39,17 @@ class CalendarRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val cache = mutableMapOf<String, CalendarFile>()
+    /** Loads in flight, so two screens asking for the same uncached year share
+     *  one download and one resolveText pass instead of racing. */
+    private val inFlight = mutableMapOf<String, Deferred<CalendarFile>>()
+    private val inFlightLock = Mutex()
     /** Per-locale deduped text pool (texts_<locale>.json), loaded lazily. */
     private val textsCache = mutableMapOf<String, Map<String, String>>()
     /** Config revision is checked at most once per process, and only on the
      *  network path — bundled years never touch the network. */
     private var revisionChecked = false
+    /** Scope for shared loads; process-lived, like the repository itself. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     sealed class LoadError : Exception() {
         /** No data exists for this locale/year. */
@@ -50,7 +63,7 @@ class CalendarRepository(private val context: Context) {
     /** Days for a single month; throws [LoadError] when the year can't load. */
     suspend fun loadMonth(locale: String, year: Int, month: Int): List<CalendarDay> {
         val file = load(locale, year)
-        val prefix = "%02d-".format(month)
+        val prefix = "%02d-".format(Locale.ROOT, month)
         return file.days
             .filter { it.key.startsWith(prefix) }
             .entries
@@ -68,6 +81,23 @@ class CalendarRepository(private val context: Context) {
     suspend fun load(locale: String, year: Int, allowNetwork: Boolean = true): CalendarFile {
         val key = fileKey(locale, year)
         cache[key]?.let { return it }
+        // Join an existing load rather than starting a second one. The shared
+        // job runs outside any one caller's scope so that a caller giving up
+        // does not cancel the load the others are still waiting on.
+        val job = inFlightLock.withLock {
+            inFlight[key] ?: scope.async { loadUncached(locale, year, key, allowNetwork) }
+                .also { inFlight[key] = it }
+        }
+        return try {
+            job.await()
+        } finally {
+            inFlightLock.withLock { if (inFlight[key] === job) inFlight.remove(key) }
+        }
+    }
+
+    private suspend fun loadUncached(
+        locale: String, year: Int, key: String, allowNetwork: Boolean
+    ): CalendarFile {
         var raw = withContext(Dispatchers.IO) { decodeAsset(key) ?: decodeDisk(key) }
         if (raw == null) {
             if (!allowNetwork) throw LoadError.NotFound
@@ -101,7 +131,11 @@ class CalendarRepository(private val context: Context) {
         val file = try {
             json.decodeFromString<CalendarFile>(response.body)
         } catch (e: Exception) {
-            throw LoadError.NotFound
+            // A 200 that will not parse is a truncated or intercepted response —
+            // a captive portal, a proxy, a dropped connection. Reporting it as
+            // NotFound told the user the archive has no such year and made the
+            // retry button look pointless, when retrying is exactly the fix.
+            throw LoadError.Offline
         }
         withContext(Dispatchers.IO) {
             runCatching {

@@ -78,8 +78,13 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Language section
-            SectionHeader(title = localization.ui.settingsLabel)
+            // Language section. This used to be headed with settingsLabel, i.e.
+            // "Settings" inside the Settings screen.
+            SectionHeader(title = when (language) {
+                AppLanguage.SR -> "Језик"
+                AppLanguage.RU -> "Язык"
+                AppLanguage.EN, AppLanguage.EN_NC -> "Language"
+            })
             LanguagePicker(
                 selectedLanguage = language,
                 onLanguageSelected = onLanguageChanged

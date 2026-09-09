@@ -92,5 +92,4 @@ object AppColors {
             Color(0xFF24381F) else Color(0xFFEDF8EA)
 
     // Great feast row dark red text
-    val greatFeastText = Color(0xFF8B1A1A)
 }

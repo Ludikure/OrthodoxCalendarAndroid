@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -81,7 +82,14 @@ fun DayDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = { onAddReminder() }) {
-                        Text(text = "\u2795", fontSize = 18.sp)
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = when (language) {
+                                AppLanguage.SR -> "Додај подсетник"
+                                AppLanguage.RU -> "Добавить напоминание"
+                                AppLanguage.EN, AppLanguage.EN_NC -> "Add reminder"
+                            }
+                        )
                     }
                     IconButton(onClick = { shareDay(context, day, localization, language) }) {
                         Icon(Icons.Default.Share, contentDescription = "Share")

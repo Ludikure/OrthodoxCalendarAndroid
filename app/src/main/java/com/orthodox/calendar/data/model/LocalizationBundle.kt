@@ -3,6 +3,12 @@ package com.orthodox.calendar.data.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+/**
+ * Some fields in this bundle (feastTypes, fastingTypes, feastNames,
+ * extraFeasts, feastTypeOverrides) are unused by this app but are kept for
+ * parity: the JSON is copied byte-for-byte from the iOS repo, which does use
+ * them, so dropping them here would make two models disagree about one file.
+ */
 data class LocalizationBundle(
     val language: String,
     val displayName: String,

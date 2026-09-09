@@ -49,8 +49,14 @@ class MainActivity : ComponentActivity() {
                         localization = uiState.localization,
                         language = uiState.language,
                         onUpdate = {
+                            // The URL comes from the server, and a device may
+                            // have nothing that handles it — an unguarded
+                            // startActivity takes the app down on the one screen
+                            // whose whole purpose is to get the user unstuck.
                             updateGate.storeUrl?.let { url ->
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                }
                             }
                         }
                     )
