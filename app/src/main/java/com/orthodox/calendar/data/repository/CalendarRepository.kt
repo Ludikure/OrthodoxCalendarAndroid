@@ -3,16 +3,15 @@ package com.orthodox.calendar.data.repository
 import android.content.Context
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.CalendarFile
-import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.network.ApiClient
+import androidx.core.content.edit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -20,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Loads a year of calendar data for a given locale.
@@ -38,16 +38,24 @@ import java.util.Locale
 class CalendarRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
-    private val cache = mutableMapOf<String, CalendarFile>()
+    /* One repository serves every screen, and its callers are spread across
+     * dispatchers: `load` is entered from the ViewModel's Main-bound scope while
+     * `loadUncached` writes from Dispatchers.IO, and the revision check clears
+     * both maps from a third. Plain HashMaps here were a data race — concurrent
+     * writes can corrupt the table outright, not merely lose an entry. */
+    private val cache = ConcurrentHashMap<String, CalendarFile>()
     /** Loads in flight, so two screens asking for the same uncached year share
-     *  one download and one resolveText pass instead of racing. */
+     *  one download and one resolveText pass instead of racing. Guarded by
+     *  [inFlightLock]: the critical sections are map lookups with no suspension
+     *  point, and the completion handler must be able to take the lock without
+     *  suspending. */
     private val inFlight = mutableMapOf<String, Deferred<CalendarFile>>()
-    private val inFlightLock = Mutex()
+    private val inFlightLock = Any()
     /** Per-locale deduped text pool (texts_<locale>.json), loaded lazily. */
-    private val textsCache = mutableMapOf<String, Map<String, String>>()
+    private val textsCache = ConcurrentHashMap<String, Map<String, String>>()
     /** Config revision is checked at most once per process, and only on the
      *  network path — bundled years never touch the network. */
-    private var revisionChecked = false
+    @Volatile private var revisionChecked = false
     /** Scope for shared loads; process-lived, like the repository itself. */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -84,15 +92,33 @@ class CalendarRepository(private val context: Context) {
         // Join an existing load rather than starting a second one. The shared
         // job runs outside any one caller's scope so that a caller giving up
         // does not cancel the load the others are still waiting on.
-        val job = inFlightLock.withLock {
-            inFlight[key] ?: scope.async { loadUncached(locale, year, key, allowNetwork) }
-                .also { inFlight[key] = it }
+        var started: Deferred<CalendarFile>? = null
+        val job = synchronized(inFlightLock) {
+            inFlight[key] ?: scope.async(start = CoroutineStart.LAZY) {
+                loadUncached(locale, year, key, allowNetwork)
+            }.also {
+                inFlight[key] = it
+                started = it
+            }
         }
-        return try {
-            job.await()
-        } finally {
-            inFlightLock.withLock { if (inFlight[key] === job) inFlight.remove(key) }
+        // Cleanup belongs to the job, not to whichever caller returns first.
+        // Removing the entry in the caller's `finally` meant that the first
+        // caller to be cancelled — a month swipe cancels the ViewModel's load
+        // job on every navigation — deleted the entry while the others were
+        // still awaiting it, so the next request started a second download and
+        // a second resolveText pass over the same 17 MB pool. That is exactly
+        // the duplicate this dedup exists to prevent.
+        //
+        // The job is created LAZY so it cannot finish before the handler is
+        // attached and fire it inline, mid-`synchronized`, on the map we are
+        // about to unlock.
+        started?.let { fresh ->
+            fresh.invokeOnCompletion {
+                synchronized(inFlightLock) { if (inFlight[key] === fresh) inFlight.remove(key) }
+            }
+            fresh.start()
         }
+        return job.await()
     }
 
     private suspend fun loadUncached(
@@ -173,7 +199,7 @@ class CalendarRepository(private val context: Context) {
                 cache.clear()
                 textsCache.clear()
             }
-            prefs.edit().putInt(REVISION_KEY, revision).apply()
+            prefs.edit { putInt(REVISION_KEY, revision) }
         }
         // Latched only now: a first launch without connectivity should retry on
         // the next download rather than skip the check for the whole process.
@@ -231,13 +257,19 @@ class CalendarRepository(private val context: Context) {
      */
     private fun poolName(locale: String) = if (locale == "en_nc") "en" else locale
 
-    private fun textsPool(locale: String): Map<String, String> = textsCache.getOrPut(poolName(locale)) {
-        try {
+    private fun textsPool(locale: String): Map<String, String> {
+        val name = poolName(locale)
+        textsCache[name]?.let { return it }
+        return try {
             // Stream-decode: the RU pool is ~17 MB; readText() would briefly double it.
-            context.assets.open("localization/texts_${poolName(locale)}.json").use {
+            context.assets.open("localization/texts_$name.json").use {
                 json.decodeFromStream<Map<String, String>>(it)
-            }
+            }.also { textsCache[name] = it }   // only a pool that loaded is cached
         } catch (e: Exception) {
+            // Deliberately not cached. Storing the empty map — which getOrPut did —
+            // meant one transient failure on the 17 MB pool blanked every saint
+            // life and every scripture text for that locale for the life of the
+            // process, silently and with no way back but a restart.
             emptyMap()
         }
     }
@@ -247,19 +279,6 @@ class CalendarRepository(private val context: Context) {
     } catch (e: Exception) {
         null
     }
-
-    // MARK: - Localization (bundled)
-
-    suspend fun loadLocalizationBundle(localeFile: String): LocalizationBundle? =
-        withContext(Dispatchers.IO) {
-            val filename = "localization/${localeFile}.json"
-            try {
-                val jsonString = context.assets.open(filename).bufferedReader().use { it.readText() }
-                json.decodeFromString<LocalizationBundle>(jsonString)
-            } catch (e: Exception) {
-                null
-            }
-        }
 
     companion object {
         private const val API_BASE = "https://orthodox-calendar-api.ludikure.workers.dev/api/v2"
