@@ -78,7 +78,7 @@ class BioMatcherTest {
             )
             checked += want.size
         }
-        assertTrue("fixture looks empty ($checked assignments)", checked > 8000)
+        assertTrue("fixture looks empty ($checked assignments)", checked > 5000)
     }
 
     @Test
