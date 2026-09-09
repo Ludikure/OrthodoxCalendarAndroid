@@ -7,10 +7,6 @@ object AppColors {
     // Brand colors (same in both modes)
     val gold = Color(0xFFD4AF37)
     val crimson = Color(0xFFC94040)
-    val feastBlue = Color(0xFF588AB0)
-    val holyWeekPurple = Color(0xFF8060A0)
-    val brightGold = Color(0xFFD4C080)
-    val fastFreeGreen = Color(0xFF5A8A50)
 
     // Fasting badge colors
     val fastStrict = Color(0xFF7B2D8E)
@@ -90,6 +86,4 @@ object AppColors {
     val fastFreeBg: Color
         @Composable get() = if (LocalIsDarkTheme.current)
             Color(0xFF24381F) else Color(0xFFEDF8EA)
-
-    // Great feast row dark red text
 }

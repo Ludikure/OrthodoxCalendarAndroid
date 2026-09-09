@@ -7,7 +7,7 @@ the lead platform / source of truth.
 ## Conventions
 
 - **1:1 file & symbol naming.** A concept lives under the same name on both sides, e.g.
-  `engine/PaschaCalculator.kt` ↔ `Engine/PaschaCalculator.swift`,
+  `engine/BioMatcher.kt` ↔ `Engine/BioMatcher.swift`,
   `app/AppUpdateGate.kt` ↔ `App/AppUpdateGate.swift`.
 - **Same architecture.** MVVM; a single `CalendarViewModel` exposing immutable UI state.
 - **Versions are deliberately independent.** iOS ships what the App Store has and
@@ -43,10 +43,19 @@ Any change here is applied to **both** apps in the same change-set.
      both apps must drop disk *and* memory caches when it moves.
    - `GET /api/{locale}/{year}` → the legacy fat `CalendarFile` for pre-1.4 clients.
      Never overwritten by the v2 publish.
-4. **Version-compare rule** — dotted numeric, missing/non-numeric components count as 0
-   (`AppUpdateGate.isOlder`). Identical on both platforms.
-5. **Engine constants** — Julian↔Gregorian `OFFSET = 13` (years 1900–2099); Meeus Julian
-   Pascha algorithm.
+4. **Version-compare rule** — dotted numeric; missing components count as 0, and a
+   version that does not parse is *not* older (`AppUpdateGate.isOlder`). The gate is
+   fail-open: counting an unparseable component as 0 made every such version older
+   than any real minimum, which would have walled a working app behind the update
+   screen. Identical on both platforms, and covered by a test on each.
+5. **No calendar arithmetic in either app.** The Paschalion, the Julian↔Gregorian
+   offset and the fasting rules live in `scripts/shared/` and are baked into the JSON
+   (`julianDate`, `paschaDistance`, `fasting`), so neither app recomputes them and the
+   two cannot drift. Android carried `PaschaCalculator`/`JulianConverter` ports with no
+   production caller — and a hardcoded `OFFSET = 13` valid only to 2099 while the app
+   offers years to 2099 — so they were deleted rather than left as a trap for the first
+   caller. `BioMatcher` is the one exception below: it must run on device because the
+   pairing depends on the rendered feast list.
 
 ## Platform notes
 

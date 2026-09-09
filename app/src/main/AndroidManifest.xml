@@ -3,6 +3,14 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      largeHeap is kept deliberately. It was introduced while two CalendarRepository
+      instances each held the 17 MB texts_ru.json pool; that duplication is fixed, but
+      one decoded pool is still tens of MB resident and minSdk is 26, where a device
+      can hand the process a 96 MB heap. Dropping it needs a measurement on real
+      low-end hardware (Debug > Memory Profiler, RU locale, a downloaded year), not a
+      guess — the failure mode is an OOM crash on exactly the devices we cannot test on.
+    -->
     <application
         android:name=".OrthodoxCalendarApp"
         android:allowBackup="true"
