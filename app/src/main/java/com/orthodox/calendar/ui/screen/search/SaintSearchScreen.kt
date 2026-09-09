@@ -46,6 +46,7 @@ import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.ui.theme.AppColors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 data class SaintSearchResult(
@@ -102,6 +103,10 @@ fun SaintSearchScreen(
 
         val calFile = try {
             repository.load(language.code, currentYear)
+        } catch (c: CancellationException) {
+            // A newer keystroke replaced this search — let it die quietly
+            // instead of clearing the results the newer one is producing.
+            throw c
         } catch (e: Exception) {
             null
         }

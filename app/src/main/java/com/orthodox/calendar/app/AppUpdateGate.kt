@@ -2,6 +2,7 @@ package com.orthodox.calendar.app
 
 import com.orthodox.calendar.BuildConfig
 import com.orthodox.calendar.data.network.ApiClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +48,8 @@ class AppUpdateGate {
             val response = ApiClient.get(configUrl)
             if (response.statusCode != 200) return  // fail-open
             json.decodeFromString<Config>(response.body)
+        } catch (c: CancellationException) {
+            throw c  // the screen went away; not a config failure
         } catch (e: Exception) {
             return  // fail-open: never block on a failed/edge-cached miss
         }

@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val repository = CalendarRepository(this)
+        val repository = (application as OrthodoxCalendarApp).repository
 
         setContent {
             val viewModel: CalendarViewModel = viewModel()

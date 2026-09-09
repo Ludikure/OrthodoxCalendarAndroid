@@ -5,6 +5,7 @@ import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.CalendarFile
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.network.ApiClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -83,6 +84,12 @@ class CalendarRepository(private val context: Context) {
         checkRevisionOnce()
         val response = try {
             ApiClient.get("$API_BASE/$locale/$year")
+        } catch (c: CancellationException) {
+            // A superseded navigation cancels this load. Rewriting that as
+            // Offline made the ViewModel's own CancellationException guard
+            // unreachable, so an abandoned load blanked the month it had
+            // already been replaced by.
+            throw c
         } catch (e: Exception) {
             throw LoadError.Offline
         }
@@ -112,11 +119,12 @@ class CalendarRepository(private val context: Context) {
      */
     private suspend fun checkRevisionOnce() {
         if (revisionChecked) return
-        revisionChecked = true
         val revision = try {
             val response = ApiClient.get(CONFIG_URL)
             if (response.statusCode != 200) return
             json.decodeFromString<WorkerConfig>(response.body).dataRevision ?: return
+        } catch (c: CancellationException) {
+            throw c
         } catch (e: Exception) {
             return
         }
@@ -125,9 +133,17 @@ class CalendarRepository(private val context: Context) {
             val stored = prefs.getInt(REVISION_KEY, 0)
             if (stored != 0 && stored != revision) {
                 runCatching { cacheDir().deleteRecursively() }
+                // The repository outlives the activity now, so clearing only the
+                // disk would leave the superseded years being served from memory
+                // until the process restarts.
+                cache.clear()
+                textsCache.clear()
             }
             prefs.edit().putInt(REVISION_KEY, revision).apply()
         }
+        // Latched only now: a first launch without connectivity should retry on
+        // the next download rather than skip the check for the whole process.
+        revisionChecked = true
     }
 
     @Serializable

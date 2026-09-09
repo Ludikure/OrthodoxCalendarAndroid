@@ -12,6 +12,7 @@ import com.orthodox.calendar.data.model.FastingPeriodInfo
 import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.preferences.AppPreferences
+import com.orthodox.calendar.OrthodoxCalendarApp
 import com.orthodox.calendar.data.repository.CalendarRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -53,7 +54,7 @@ data class CalendarUiState(
 
 class CalendarViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = CalendarRepository(application)
+    private val repository = (application as OrthodoxCalendarApp).repository
     private val localizationManager = LocalizationManager(application)
     private val preferences = AppPreferences(application)
 
