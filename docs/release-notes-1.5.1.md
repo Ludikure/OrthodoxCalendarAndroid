@@ -84,6 +84,22 @@ Since 1.4.2, the last version production users have:
   boundary.
 - Search no longer stutters while typing.
 
+**Also fixed (second review pass)**
+- Scripture readings now name the service they belong to — Vespers, Matins, the
+  Hours, the numbered Matins and Passion gospels. The data always carried it, in
+  English; it is translated per language now. A quarter of Serbian readings and a
+  third of English ones gain a label that was previously blank.
+- Readings outside the three usual kinds no longer print the word "OTHER" above a
+  title that already names them (the odes of the Great Canon).
+- The last day of the month and the fasting legend no longer sit under the
+  gesture bar.
+- Rotating the phone no longer clears a forced-update screen, and a malformed
+  version number can no longer trigger one.
+- The About screen no longer crashes on a device with no browser.
+- A failed load of a language's text pool is retried instead of leaving every
+  saint life and reading blank until the app restarts.
+- A cancelled month swipe no longer causes the same year to be downloaded twice.
+
 **Under the hood**
 - `READ_CALENDAR`/`WRITE_CALENDAR` removed — the reminder flow hands off to the
   calendar app by intent and never needed them. Worth a note in the Play data
@@ -92,4 +108,9 @@ Since 1.4.2, the last version production users have:
   text pool.
 - Dates formatted with a fixed locale, so the "today" highlight no longer
   disappears under a non-Gregorian device locale.
-- Search, settings and add-reminder are real buttons with accessibility labels.
+- Search, settings and add-reminder are real buttons with accessibility labels;
+  so are the month arrows and the list/grid toggle, and "Back"/"Share" are no
+  longer announced in English inside a Serbian or Russian UI.
+- CI builds the release APK (R8) as well as debug.
+- `PaschaCalculator`/`JulianConverter` deleted — no callers, and a Julian offset
+  hardcoded for 1900–2099 in an app that offers years to 2099.
