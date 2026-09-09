@@ -40,6 +40,7 @@ import com.orthodox.calendar.ui.components.MonthListScreen
 import com.orthodox.calendar.ui.screen.datepicker.DatePickerSheet
 import com.orthodox.calendar.ui.screen.grid.CalendarGridScreen
 import com.orthodox.calendar.ui.theme.AppColors
+import java.util.Locale
 import com.orthodox.calendar.ui.viewmodel.CalendarViewModel
 import com.orthodox.calendar.ui.viewmodel.ViewMode
 import kotlinx.coroutines.launch
@@ -49,6 +50,7 @@ import kotlinx.coroutines.launch
 fun CalendarTabScreen(
     viewModel: CalendarViewModel,
     onDayClick: (com.orthodox.calendar.data.model.CalendarDay) -> Unit = {},
+    onDateClick: (String) -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -167,6 +169,7 @@ fun CalendarTabScreen(
                     MonthListScreen(
                         days = uiState.daysInMonth,
                         localization = localization,
+                        language = uiState.language,
                         loadedLocale = uiState.loadedLocale,
                         scrollToTodayTrigger = uiState.scrollToTodayTrigger,
                         onDayClick = onDayClick
@@ -200,7 +203,10 @@ fun CalendarTabScreen(
                     viewModel.goToMonth(month, year)
                 },
                 onDaySelected = { month, year, day ->
+                    // Move the calendar behind the sheet *and* open the day —
+                    // this used to discard `day` and behave like a month tap.
                     viewModel.goToMonth(month, year)
+                    onDateClick(String.format(Locale.ROOT, "%04d-%02d-%02d", year, month, day))
                 },
                 onTodayClick = { viewModel.goToToday() },
                 onDismiss = {

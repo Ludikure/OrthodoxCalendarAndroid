@@ -107,6 +107,17 @@ class BioMatcherTest {
     }
 
     @Test
+    fun `the generic word list has no mixed-script entries`() {
+        // "апостолa" carried a Latin a as its last letter, invisible in a raw
+        // string blob and unmatchable against real Cyrillic text.
+        val mixed = BioMatcher.generic.filter { word ->
+            word.any { it in 'а'..'я' || it == 'ё' || it in 'ђ'..'џ' } &&
+                word.any { it in 'a'..'z' }
+        }
+        assertEquals("mixed-script words in BioMatcher.generic", emptyList<String>(), mixed)
+    }
+
+    @Test
     fun `two-letter words count only when capitalised`() {
         assertEquals(listOf("ор", "ii"), BioMatcher.tokens("Ор II"))
         assertEquals(emptyList<String>(), BioMatcher.tokens("св 1918"))

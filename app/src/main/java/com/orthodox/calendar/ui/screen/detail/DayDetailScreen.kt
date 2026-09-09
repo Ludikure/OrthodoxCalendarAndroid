@@ -49,6 +49,8 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
 import com.orthodox.calendar.data.model.SaintBio
 import com.orthodox.calendar.engine.BioMatcher
+import com.orthodox.calendar.ui.util.FastingStyle
+import com.orthodox.calendar.ui.util.fastingStyle
 import com.orthodox.calendar.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -265,7 +267,7 @@ private fun HeroSection(
 
 @Composable
 private fun FastingSection(day: CalendarDay) {
-    val (icon, color, bg) = fastingStyle(day.fasting.type)
+    val (icon, color, bg) = fastingVisuals(day.fasting.type)
 
     Column {
         // Large fasting badge
@@ -501,15 +503,15 @@ private fun localizedSaintType(type: String, language: AppLanguage): String {
 }
 
 @Composable
-private fun fastingStyle(type: String): Triple<String, Color, Color> {
+private fun fastingVisuals(type: String): Triple<String, Color, Color> {
     val t = type.lowercase()
-    return when {
-        t == "totalabstinence" || t == "strict" -> Triple("\uD83D\uDEAB", AppColors.fastStrict, AppColors.fastStrictBg)
-        t == "dryeating" -> Triple("\uD83C\uDF5E", AppColors.fastStrict, AppColors.fastStrictBg)
-        t == "hotnooil" || t == "hotwithoutoil" || t == "water" -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
-        t.contains("nooil") -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
-        t.contains("oil") -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
-        t.contains("fish") || t.contains("roe") -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
+    return when (fastingStyle(t)) {
+        FastingStyle.STRICT -> Triple(
+            if (t == "dryeating") "\uD83C\uDF5E" else "\uD83D\uDEAB",
+            AppColors.fastStrict, AppColors.fastStrictBg)
+        FastingStyle.WATER -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
+        FastingStyle.OIL -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
+        FastingStyle.FISH -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
         else -> Triple("\u2713", AppColors.fastFree, AppColors.fastFreeBg)
     }
 }

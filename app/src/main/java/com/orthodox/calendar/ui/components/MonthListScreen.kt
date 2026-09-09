@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
@@ -23,6 +24,7 @@ import java.time.format.DateTimeFormatter
 fun MonthListScreen(
     days: List<CalendarDay>,
     localization: LocalizationBundle,
+    language: AppLanguage,
     loadedLocale: String,
     scrollToTodayTrigger: Boolean,
     onDayClick: (CalendarDay) -> Unit = {},
@@ -53,7 +55,8 @@ fun MonthListScreen(
                 DayRowView(
                     day = day,
                     isToday = day.gregorianDate == todayString,
-                    localization = localization
+                    localization = localization,
+                    language = language
                 )
             }
 

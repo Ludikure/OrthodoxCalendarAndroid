@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.CalendarDay
+import com.orthodox.calendar.ui.util.FastingStyle
+import com.orthodox.calendar.ui.util.fastingStyle
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -51,19 +53,9 @@ fun GridDayCell(
             AppColors.crimson.copy(alpha = 0.08f),
             shape = RoundedCornerShape(8.dp)
         )
-        fastType == "totalabstinence" || fastType == "dryeating" -> Modifier.background(
-            AppColors.fastStrict.copy(alpha = 0.08f),
-            shape = RoundedCornerShape(8.dp)
-        )
-        fastType.contains("oil") -> Modifier.background(
-            AppColors.fastOil.copy(alpha = 0.08f),
-            shape = RoundedCornerShape(8.dp)
-        )
-        fastType.contains("fish") -> Modifier.background(
-            AppColors.fastFish.copy(alpha = 0.08f),
-            shape = RoundedCornerShape(8.dp)
-        )
-        else -> Modifier
+        else -> fastingTint(fastType)?.let {
+            Modifier.background(it.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp))
+        } ?: Modifier
     }
 
     val borderModifier = when {
@@ -150,12 +142,13 @@ fun GridDayCell(
     }
 }
 
-private fun fastingColor(type: String): Color {
-    return when {
-        type == "totalabstinence" || type == "dryeating" -> AppColors.fastStrict
-        type.contains("nooil") -> AppColors.fastWater
-        type.contains("oil") -> AppColors.fastOil
-        type.contains("fish") || type.contains("roe") -> AppColors.fastFish
-        else -> Color.Transparent
-    }
+/** Cell tint for a fasting type, or null for a non-fasting day. */
+private fun fastingTint(type: String): Color? = when (fastingStyle(type)) {
+    FastingStyle.STRICT -> AppColors.fastStrict
+    FastingStyle.WATER -> AppColors.fastWater
+    FastingStyle.OIL -> AppColors.fastOil
+    FastingStyle.FISH -> AppColors.fastFish
+    FastingStyle.FREE -> null
 }
+
+private fun fastingColor(type: String): Color = fastingTint(type) ?: Color.Transparent

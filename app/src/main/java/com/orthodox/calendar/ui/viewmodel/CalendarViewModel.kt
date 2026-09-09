@@ -146,6 +146,24 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         loadMonth()
     }
 
+    /**
+     * The day for a date, loading its year if it is not the one on screen.
+     * Search and the date picker navigate to a day while its month is still
+     * loading, so resolving from `daysInMonth` alone found nothing.
+     */
+    suspend fun dayFor(gregorianDate: String): CalendarDay? {
+        _uiState.value.daysInMonth.firstOrNull { it.gregorianDate == gregorianDate }?.let { return it }
+        return try {
+            val d = LocalDate.parse(gregorianDate)
+            repository.loadMonth(_uiState.value.language.code, d.year, d.monthValue)
+                .firstOrNull { it.gregorianDate == gregorianDate }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun goToMonth(month: Int, year: Int) {
         _uiState.update { it.copy(currentMonth = month, currentYear = year) }
         loadMonth()

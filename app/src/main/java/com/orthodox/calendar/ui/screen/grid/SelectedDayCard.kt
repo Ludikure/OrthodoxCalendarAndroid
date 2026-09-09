@@ -28,6 +28,8 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.ui.util.FastingStyle
+import com.orthodox.calendar.ui.util.fastingStyle
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -132,11 +134,11 @@ fun SelectedDayCard(
 }
 
 private fun fastingColor(type: String): Color {
-    return when {
-        type == "totalabstinence" || type == "dryeating" -> AppColors.fastStrict
-        type.contains("nooil") -> AppColors.fastWater
-        type.contains("oil") -> AppColors.fastOil
-        type.contains("fish") || type.contains("roe") -> AppColors.fastFish
+    return when (fastingStyle(type)) {
+        FastingStyle.STRICT -> AppColors.fastStrict
+        FastingStyle.WATER -> AppColors.fastWater
+        FastingStyle.OIL -> AppColors.fastOil
+        FastingStyle.FISH -> AppColors.fastFish
         else -> Color.Transparent
     }
 }

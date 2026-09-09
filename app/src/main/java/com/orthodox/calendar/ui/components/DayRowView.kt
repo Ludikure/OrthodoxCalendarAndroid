@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.ui.util.FastingStyle
+import com.orthodox.calendar.ui.util.fastingStyle
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -34,7 +36,7 @@ fun DayRowView(
     day: CalendarDay,
     isToday: Boolean,
     localization: LocalizationBundle,
-    language: AppLanguage = AppLanguage.SR,
+    language: AppLanguage,
     modifier: Modifier = Modifier
 ) {
     val isGreatFeast = day.isGreatFeast
@@ -188,12 +190,13 @@ fun DayRowView(
 @Composable
 private fun FastingBadge(day: CalendarDay) {
     val t = day.fasting.type.lowercase()
-    val (icon, color, bg) = when {
-        t == "totalabstinence" -> Triple("\uD83D\uDEAB", AppColors.fastStrict, AppColors.fastStrictBg)
-        t == "dryeating" -> Triple("\uD83C\uDF5E", AppColors.fastStrict, AppColors.fastStrictBg)
-        t.contains("nooil") -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
-        t.contains("oil") -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
-        t.contains("fish") || t.contains("roe") -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
+    val (icon, color, bg) = when (fastingStyle(t)) {
+        FastingStyle.STRICT -> Triple(
+            if (t == "dryeating") "\uD83C\uDF5E" else "\uD83D\uDEAB",
+            AppColors.fastStrict, AppColors.fastStrictBg)
+        FastingStyle.WATER -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
+        FastingStyle.OIL -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
+        FastingStyle.FISH -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
         else -> Triple("\u2713", AppColors.fastFree, AppColors.fastFreeBg)
     }
 
