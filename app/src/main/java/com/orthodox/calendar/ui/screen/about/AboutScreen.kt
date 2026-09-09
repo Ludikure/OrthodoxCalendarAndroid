@@ -1,7 +1,6 @@
 package com.orthodox.calendar.ui.screen.about
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +32,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.ui.util.backLabel
 import com.orthodox.calendar.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -167,7 +168,7 @@ fun AboutScreen(
                 title = { Text(aboutTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel(language))
                     }
                 }
             )
@@ -235,14 +236,12 @@ fun AboutScreen(
             HorizontalDivider()
 
             // Links
-            LinkRow(privacyLabel) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ludikure.github.io/OrthodoxCalendar/privacy"))
-                context.startActivity(intent)
-            }
-            LinkRow(supportLabel) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ludikure.github.io/OrthodoxCalendar/"))
-                context.startActivity(intent)
-            }
+            // A device with no browser throws ActivityNotFoundException here —
+            // the same crash already guarded in UpdateRequiredScreen and
+            // AddReminderScreen. Nothing on this screen is worth taking the app
+            // down for, so a missing handler just does nothing.
+            LinkRow(privacyLabel) { openLink(context, "https://ludikure.github.io/OrthodoxCalendar/privacy") }
+            LinkRow(supportLabel) { openLink(context, "https://ludikure.github.io/OrthodoxCalendar/") }
 
             HorizontalDivider()
 
@@ -258,6 +257,10 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+private fun openLink(context: android.content.Context, url: String) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
 }
 
 @Composable

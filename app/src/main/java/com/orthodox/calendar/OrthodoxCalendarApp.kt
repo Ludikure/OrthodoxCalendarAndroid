@@ -1,6 +1,7 @@
 package com.orthodox.calendar
 
 import android.app.Application
+import com.orthodox.calendar.app.AppUpdateGate
 import com.orthodox.calendar.data.repository.CalendarRepository
 
 class OrthodoxCalendarApp : Application() {
@@ -15,13 +16,13 @@ class OrthodoxCalendarApp : Application() {
      */
     val repository: CalendarRepository by lazy { CalendarRepository(this) }
 
-    override fun onCreate() {
-        super.onCreate()
-        instance = this
-    }
-
-    companion object {
-        lateinit var instance: OrthodoxCalendarApp
-            private set
-    }
+    /**
+     * The update gate lives here for the same reason.
+     *
+     * Held in the composition it was rebuilt with the Activity, so `mustUpdate`
+     * fell back to false on every rotation: a user the server had blocked could
+     * turn the phone and be inside the app while /api/config was refetched.
+     * Process-scoped, the gate is asked once and its answer sticks.
+     */
+    val updateGate: AppUpdateGate by lazy { AppUpdateGate() }
 }

@@ -27,9 +27,15 @@ class AppUpdateGate {
     private val _mustUpdate = MutableStateFlow(false)
     val mustUpdate: StateFlow<Boolean> = _mustUpdate.asStateFlow()
 
-    /** Resolved at check() time: a `playStoreUrl` if the server supplies one. */
-    var storeUrl: String? = null
-        private set
+    /** Resolved at check() time: a `playStoreUrl` if the server supplies one.
+     *  A StateFlow rather than a plain var — it is written from [check]'s
+     *  dispatcher and read from the composition. */
+    private val _storeUrl = MutableStateFlow<String?>(null)
+    val storeUrl: StateFlow<String?> = _storeUrl.asStateFlow()
+
+    /** The gate is process-scoped now, so a rotation must not refetch. Latched
+     *  only on success: a launch with no connectivity should ask again. */
+    @Volatile private var checked = false
 
     private val configUrl = "https://orthodox-calendar-api.ludikure.workers.dev/api/config"
     private val json = Json { ignoreUnknownKeys = true }
@@ -49,6 +55,7 @@ class AppUpdateGate {
     }.getOrDefault(false)
 
     suspend fun check() {
+        if (checked) return
         val config = try {
             val response = ApiClient.get(configUrl)
             if (response.statusCode != 200) return  // fail-open
@@ -63,28 +70,39 @@ class AppUpdateGate {
         // A server-supplied URL is only followed when it points at the store;
         // anything else falls back to this app's own listing.
         val fallback = "https://play.google.com/store/apps/details?id=${BuildConfig.APPLICATION_ID}"
-        storeUrl = config.playStoreUrl?.takeIf { isStoreUrl(it) } ?: fallback
+        _storeUrl.value = config.playStoreUrl?.takeIf { isStoreUrl(it) } ?: fallback
 
         if (isOlder(installedVersion, config.minVersion)) {
             _mustUpdate.value = true
         }
+        checked = true
     }
 
     companion object {
         /**
          * True if [version] is strictly older than [minimum] (dotted numeric
-         * compare, e.g. "1.3.0" < "1.4.0"). Non-numeric/missing components → 0.
+         * compare, e.g. "1.3.0" < "1.4.0"). Missing components count as 0, so
+         * "1.4" == "1.4.0". A version that does not parse is *not* older: the
+         * gate is fail-open by design, and treating an unparseable component as
+         * 0 made every such version older than any real minimum — a malformed
+         * versionName would have walled a working app behind the update screen.
          * Identical to iOS `AppUpdateGate.isOlder`.
          */
         fun isOlder(version: String, minimum: String): Boolean {
-            val a = version.split(".").map { it.toIntOrNull() ?: 0 }
-            val b = minimum.split(".").map { it.toIntOrNull() ?: 0 }
+            val a = components(version) ?: return false
+            val b = components(minimum) ?: return false
             for (i in 0 until maxOf(a.size, b.size)) {
                 val x = a.getOrElse(i) { 0 }
                 val y = b.getOrElse(i) { 0 }
                 if (x != y) return x < y
             }
             return false
+        }
+
+        private fun components(version: String): List<Int>? {
+            val parts = version.split(".")
+            if (parts.isEmpty()) return null
+            return parts.map { it.toIntOrNull() ?: return null }
         }
     }
 }
