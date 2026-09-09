@@ -3,9 +3,12 @@ package com.orthodox.calendar.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,8 +31,8 @@ fun MonthListScreen(
     language: AppLanguage,
     loadedLocale: String,
     scrollToTodayTrigger: Boolean,
-    onDayClick: (CalendarDay) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDayClick: (CalendarDay) -> Unit = {}
 ) {
     val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT))
     val listState = rememberLazyListState()
@@ -44,6 +47,11 @@ fun MonthListScreen(
 
     LazyColumn(
         state = listState,
+        // The window draws behind the navigation bar (enableEdgeToEdge), and the
+        // root Column only insets the status bar — without this the last day of
+        // the month sits under the gesture pill. Padding the content rather than
+        // the list keeps the card background running to the bottom edge.
+        contentPadding = WindowInsets.navigationBars.asPaddingValues(),
         modifier = modifier
             .fillMaxSize()
             .background(AppColors.cardBg)
