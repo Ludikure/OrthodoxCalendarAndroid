@@ -11,7 +11,16 @@ data class ScriptureReading(
     val zachalo: Int? = null,
     val text: String? = null,             // KJV NT / Brenton (Septuagint) OT
     val textWeb: String? = null,          // WEB NT (English only); null otherwise
-    val service: String? = null,          // "Jutrenya", "Liturgija", etc.
+    val service: String? = null,          // Localized service name; menaion readings only
+    // The lectionary slot this reading came from ("Vespers", "8th Matins Gospel",
+    // "3rd Hour, Prophecy") and, for a commemoration reading, whose it is
+    // ("Theotokos", "Forerunner"). Both are written by the pipeline in English
+    // because they come from the lectionary tables, so `source` is translated
+    // for display (see ui/util/ReadingLabels.kt) and `desc` is not shown at all
+    // — it is free text with no localization path. Modelled so the schema this
+    // repo shares with iOS is complete rather than silently truncated.
+    val source: String? = null,
+    val desc: String? = null,
     // Deduped bundled data: text/textWeb live in the texts_<locale> pool, keyed here.
     val textRef: String? = null,
     val textWebRef: String? = null

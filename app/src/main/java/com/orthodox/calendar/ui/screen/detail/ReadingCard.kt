@@ -32,6 +32,8 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.ScriptureReading
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.util.readingTypeLabel
+import com.orthodox.calendar.ui.util.serviceLabel
 
 @Composable
 fun ReadingCard(
@@ -46,29 +48,12 @@ fun ReadingCard(
     // fall back to the bundled text. Mirror of iOS ReadingCard.displayText.
     val displayText = reading.text(bibleTranslation)
 
-    val localizedType = run {
-        val t = reading.type.lowercase()
-        when (language) {
-            AppLanguage.SR -> when {
-                t == "gospel" -> "\u0408\u0415\u0412\u0410\u041D\u0402\u0415\u0409\u0415"
-                t == "apostol" -> "\u0410\u041F\u041E\u0421\u0422\u041E\u041B"
-                t == "ot" -> "\u0421\u0422\u0410\u0420\u0418 \u0417\u0410\u0412\u0415\u0422"
-                else -> reading.type.uppercase()
-            }
-            AppLanguage.RU -> when {
-                t == "gospel" -> "\u0415\u0412\u0410\u041D\u0413\u0415\u041B\u0418\u0415"
-                t == "apostol" -> "\u0410\u041F\u041E\u0421\u0422\u041E\u041B"
-                t == "ot" -> "\u0412\u0415\u0422\u0425\u0418\u0419 \u0417\u0410\u0412\u0415\u0422"
-                else -> reading.type.uppercase()
-            }
-            AppLanguage.EN, AppLanguage.EN_NC -> when {
-                t == "gospel" -> "GOSPEL"
-                t == "apostol" -> "EPISTLE"
-                t == "ot" -> "OLD TESTAMENT"
-                else -> reading.type.uppercase()
-            }
-        }
-    }
+    // null for a type outside the three known ones — the Great Canon's odes come
+    // through as "other", and the card used to print the literal word OTHER
+    // above a title that already reads as one ("Песма прва").
+    val localizedType = readingTypeLabel(reading.type, language)
+    // `service` is set on a fraction of readings; `source` covers the rest.
+    val service = serviceLabel(reading, language)
 
     val zachaloLabel = when (language) {
         AppLanguage.SR, AppLanguage.RU -> "\u0437\u0430\u0447."
@@ -102,9 +87,9 @@ fun ReadingCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Service label
-            reading.service?.let { service ->
+            service?.let {
                 Text(
-                    text = service,
+                    text = it,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
@@ -113,13 +98,15 @@ fun ReadingCard(
                 Spacer(modifier = Modifier.width(6.dp))
             }
 
-            Text(
-                text = localizedType,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                color = AppColors.mutedText
-            )
+            localizedType?.let {
+                Text(
+                    text = it,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                    color = AppColors.mutedText
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 

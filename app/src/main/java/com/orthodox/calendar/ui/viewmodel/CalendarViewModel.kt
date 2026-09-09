@@ -15,6 +15,7 @@ import com.orthodox.calendar.data.preferences.AppPreferences
 import com.orthodox.calendar.OrthodoxCalendarApp
 import com.orthodox.calendar.data.repository.CalendarRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 enum class ViewMode { LIST, GRID }
@@ -34,7 +36,10 @@ data class CalendarUiState(
     val fastingPeriods: Map<String, FastingPeriodInfo> = emptyMap(),
     val viewMode: ViewMode = ViewMode.LIST,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    /** The last load failed for a reason other than connectivity — the archive
+     *  has no such year. The failure view composes its own localized message
+     *  from this and [isOffline]; the state carries no user-facing text. */
+    val loadFailed: Boolean = false,
     val isOffline: Boolean = false,
     val loadedLocale: String = "",
     val language: AppLanguage = AppLanguage.SR,
@@ -194,6 +199,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
      * Nativity Fast, Nov 28 – Jan 6) resolves to its true dates. The neighbour is
      * pulled only in those months — never on a normal launch — and failure to
      * fetch it (offline / out of range) falls back to the single year.
+     *
+     * November pulls a year the user is not looking at, one month earlier than it
+     * is strictly needed; the fast runs into it either way and the year is on disk
+     * by then, so the alternative — a second condition per month — buys nothing.
      */
     private suspend fun seasonDays(locale: String, year: Int, month: Int): List<CalendarDay> {
         val current = repository.load(locale, year).days.values.toList()
@@ -209,7 +218,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadData(locale: String, month: Int, year: Int) {
-        _uiState.update { it.copy(isLoading = true, errorMessage = null, isOffline = false) }
+        _uiState.update { it.copy(isLoading = true, loadFailed = false, isOffline = false) }
 
         // Cancel any in-flight load so quick navigation doesn't pile up
         // concurrent large network fetches/decodes (which could OOM-crash).
@@ -219,15 +228,19 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 val days = repository.loadMonth(locale, year, month)
                 // The full year is already cached by loadMonth; compute season runs
                 // (start/end + day index) across it so spans crossing months resolve.
+                // Off the Main dispatcher: this walks ~1100 days and parses two
+                // dates per adjacency test, and viewModelScope is Main-bound.
                 val names = _uiState.value.localization?.fastingPeriodNames ?: emptyMap()
-                val spans = FastingPeriods.computeSpans(seasonDays(locale, year, month), names)
+                val spans = withContext(Dispatchers.Default) {
+                    FastingPeriods.computeSpans(seasonDays(locale, year, month), names)
+                }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         daysInMonth = days,
                         fastingPeriods = spans,
                         loadedLocale = locale,
-                        errorMessage = null,
+                        loadFailed = false,
                         isOffline = false
                     )
                 }
@@ -238,7 +251,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                     it.copy(
                         isLoading = false,
                         isOffline = e is CalendarRepository.LoadError.Offline,
-                        errorMessage = "Unable to load $year",
+                        loadFailed = true,
                         daysInMonth = emptyList()
                     )
                 }

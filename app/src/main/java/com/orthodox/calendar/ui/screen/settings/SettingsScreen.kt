@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.BuildConfig
 import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.ui.util.backLabel
 import com.orthodox.calendar.data.model.AppTheme
 import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.LocalizationBundle
@@ -65,7 +66,7 @@ fun SettingsScreen(
                 title = { Text(localization.ui.settingsLabel) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel(language))
                     }
                 }
             )

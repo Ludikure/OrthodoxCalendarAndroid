@@ -25,7 +25,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.navArgument
+import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.util.backLabel
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.ui.screen.about.AboutScreen
 import com.orthodox.calendar.ui.screen.detail.DayDetailScreen
@@ -99,7 +101,10 @@ fun NavGraph(
 
             val resolved = day
             if (resolved == null || localization == null) {
-                DayDetailPlaceholder(onBack = { navController.popBackStack() })
+                DayDetailPlaceholder(
+                    language = uiState.language,
+                    onBack = { navController.popBackStack() }
+                )
             } else {
                 DayDetailScreen(
                     day = resolved,
@@ -133,7 +138,10 @@ fun NavGraph(
 
             val resolved = day
             if (resolved == null || localization == null) {
-                DayDetailPlaceholder(onBack = { navController.popBackStack() })
+                DayDetailPlaceholder(
+                    language = uiState.language,
+                    onBack = { navController.popBackStack() }
+                )
             } else {
                 AddReminderScreen(
                     day = resolved,
@@ -193,14 +201,14 @@ fun NavGraph(
  *  is to never leave the user on a blank screen with no way back. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DayDetailPlaceholder(onBack: () -> Unit) {
+private fun DayDetailPlaceholder(language: AppLanguage, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel(language))
                     }
                 }
             )

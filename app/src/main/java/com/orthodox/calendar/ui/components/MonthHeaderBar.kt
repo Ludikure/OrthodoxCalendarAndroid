@@ -2,9 +2,11 @@ package com.orthodox.calendar.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.platform.LocalView
 import com.orthodox.calendar.ui.util.Haptics
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,11 +21,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.util.chooseMonthLabel
+import com.orthodox.calendar.ui.util.gridViewLabel
+import com.orthodox.calendar.ui.util.listViewLabel
+import com.orthodox.calendar.ui.util.nextMonthLabel
+import com.orthodox.calendar.ui.util.previousMonthLabel
 import com.orthodox.calendar.ui.viewmodel.CalendarUiState
 import com.orthodox.calendar.ui.viewmodel.ViewMode
 
@@ -35,11 +47,12 @@ fun MonthHeaderBar(
     currentYear: Int,
     viewMode: ViewMode,
     monthName: String,
+    language: AppLanguage,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onViewModeChange: (ViewMode) -> Unit,
-    onMonthTap: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMonthTap: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -57,13 +70,19 @@ fun MonthHeaderBar(
         IconButton(
             onClick = { Haptics.selection(view); onPreviousMonth() },
             enabled = !atFirstMonth,
-            modifier = Modifier.size(40.dp)
+            // The button's only content is a glyph, so TalkBack announced "\u276E".
+            // The label goes on the button; the glyph is cleared so the merged
+            // node does not read both.
+            modifier = Modifier
+                .size(40.dp)
+                .semantics { contentDescription = previousMonthLabel(language) }
         ) {
             Text(
                 text = "\u276E",
                 color = Color.White.copy(alpha = if (atFirstMonth) 0.3f else 1f),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clearAndSetSemantics { }
             )
         }
 
@@ -72,7 +91,10 @@ fun MonthHeaderBar(
         // Month name + year (tappable for date picker)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { Haptics.light(view); onMonthTap() }
+            modifier = Modifier.clickable(
+                onClickLabel = chooseMonthLabel(language),
+                role = Role.Button
+            ) { Haptics.light(view); onMonthTap() }
         ) {
             Text(
                 text = monthName,
@@ -97,12 +119,14 @@ fun MonthHeaderBar(
             modifier = Modifier.padding(end = 4.dp)
         ) {
             ViewModeButton(
-                label = "\u2630",
+                glyph = "\u2630",
+                description = listViewLabel(language),
                 isSelected = viewMode == ViewMode.LIST,
                 onClick = { Haptics.selection(view); onViewModeChange(ViewMode.LIST) }
             )
             ViewModeButton(
-                label = "\u25A6",
+                glyph = "\u25A6",
+                description = gridViewLabel(language),
                 isSelected = viewMode == ViewMode.GRID,
                 onClick = { Haptics.selection(view); onViewModeChange(ViewMode.GRID) }
             )
@@ -112,36 +136,47 @@ fun MonthHeaderBar(
         IconButton(
             onClick = { Haptics.selection(view); onNextMonth() },
             enabled = !atLastMonth,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier
+                .size(40.dp)
+                .semantics { contentDescription = nextMonthLabel(language) }
         ) {
             Text(
                 text = "\u276F",
                 color = Color.White.copy(alpha = if (atLastMonth) 0.3f else 1f),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clearAndSetSemantics { }
             )
         }
     }
 }
 
+/** [glyph] is what is drawn, [description] what a screen reader announces —
+ *  `selectable` also carries which of the two view modes is the current one,
+ *  which a bare `clickable` on a Text could not. */
 @Composable
 private fun ViewModeButton(
-    label: String,
+    glyph: String,
+    description: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = if (isSelected) AppColors.goldAccent else Color.Transparent
     val textColor = if (isSelected) Color(0xFF2C2418) else Color.White.copy(alpha = 0.5f)
 
-    Text(
-        text = label,
-        color = textColor,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
+    Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
-            .clickable(onClick = onClick)
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = description }
             .padding(horizontal = 10.dp, vertical = 8.dp)
-    )
+    ) {
+        Text(
+            text = glyph,
+            color = textColor,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }

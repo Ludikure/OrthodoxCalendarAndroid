@@ -56,11 +56,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun CalendarTabScreen(
     viewModel: CalendarViewModel,
+    modifier: Modifier = Modifier,
     onDayClick: (com.orthodox.calendar.data.model.CalendarDay) -> Unit = {},
     onDateClick: (String) -> Unit = {},
     onSearchClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onSettingsClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val localization = uiState.localization ?: return
@@ -123,6 +123,7 @@ fun CalendarTabScreen(
             currentYear = uiState.currentYear,
             viewMode = uiState.viewMode,
             monthName = localization.ui.months.getOrElse(uiState.currentMonth - 1) { "" },
+            language = uiState.language,
             onPreviousMonth = { viewModel.goToPreviousMonth() },
             onNextMonth = { viewModel.goToNextMonth() },
             onViewModeChange = { viewModel.setViewMode(it) },
@@ -171,7 +172,7 @@ fun CalendarTabScreen(
                     Text(text = it, fontSize = 13.sp, color = AppColors.mutedText)
                 }
             }
-        } else if ((uiState.isOffline || uiState.errorMessage != null) && uiState.daysInMonth.isEmpty()) {
+        } else if ((uiState.isOffline || uiState.loadFailed) && uiState.daysInMonth.isEmpty()) {
             // Retrying only helps when the load failed on the network; blaming
             // the connection for a year that simply has no data sends the user
             // chasing wifi.
