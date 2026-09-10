@@ -46,6 +46,7 @@ import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.util.foldForSearch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -120,11 +121,17 @@ fun SaintSearchScreen(
 
         // Off the composition dispatcher: this walks every feast of every day
         // and used to lowercase each name on every keystroke.
+        //
+        // Both sides are folded to one script before comparing: the sr data is
+        // Cyrillic-only while Serbian is read in both alphabets, so a query
+        // typed "Nikola" or "Djordje" used to return nothing at all. Display
+        // keeps the original text.
+        val foldedQuery = foldForSearch(q)
         results = withContext(Dispatchers.Default) {
             calFile.days.values
                 .flatMap { day ->
                     day.feasts.mapNotNull { feast ->
-                        if (!feast.name.contains(q, ignoreCase = true)) null
+                        if (!foldForSearch(feast.name).contains(foldedQuery)) null
                         else SaintSearchResult(
                             matchedText = feast.name,
                             gregorianMonth = day.gregorianMonth,

@@ -45,8 +45,13 @@ fun SaintCard(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Feast description takes priority over bio
-    val expandableText = feast.description?.takeIf { it.isNotEmpty() } ?: bio?.text
+    // Feast description takes priority over bio. Empty counts as absent:
+    // CalendarRepository.resolveText deliberately keeps a bio whose ref the pool
+    // cannot resolve, with text "", so the day's bio count stays stable for
+    // BioMatcher — but the card must not then offer a chevron that opens onto
+    // nothing.
+    val expandableText = feast.description?.takeIf { it.isNotEmpty() }
+        ?: bio?.text?.takeIf { it.isNotEmpty() }
 
     val goldAccent = AppColors.goldAccent
 
