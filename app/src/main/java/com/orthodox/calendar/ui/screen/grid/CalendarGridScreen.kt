@@ -26,7 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,9 +36,6 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun CalendarGridScreen(
@@ -46,16 +43,27 @@ fun CalendarGridScreen(
     localization: LocalizationBundle,
     language: AppLanguage,
     loadedLocale: String,
+    loadedContentKey: String,
+    today: String,
     onDayClick: (CalendarDay) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT))
-    var selectedDay by remember(loadedLocale, days.size) { mutableStateOf<CalendarDay?>(null) }
+    /* The selection is kept as a date rather than the `CalendarDay` itself, so it
+     * can survive a configuration change (`CalendarDay` is not storable in a
+     * Bundle) — it used to be lost on rotation, and on any recomposition that
+     * happened to drop this scope. Keyed by the loaded month, so moving to
+     * another month or language still clears it.
+     *
+     * `today` comes from the ViewModel: a date read here would be fixed at this
+     * composition, and the ring would keep pointing at yesterday however long
+     * the app stayed open across midnight. */
+    var selectedDate by rememberSaveable(loadedContentKey) { mutableStateOf<String?>(null) }
+    val selectedDay = days.firstOrNull { it.gregorianDate == selectedDate }
 
-    // Auto-select today or first day
-    LaunchedEffect(days, loadedLocale) {
-        val today = days.firstOrNull { it.gregorianDate == todayString }
-        selectedDay = today ?: days.firstOrNull()
+    // Auto-select today or first day, when a month's days arrive
+    LaunchedEffect(loadedContentKey) {
+        selectedDate = days.firstOrNull { it.gregorianDate == today }?.gregorianDate
+            ?: days.firstOrNull()?.gregorianDate
     }
 
     val view = androidx.compose.ui.platform.LocalView.current
@@ -121,9 +129,12 @@ fun CalendarGridScreen(
                         val day = days[dayIndex]
                         GridDayCell(
                             day = day,
-                            isToday = day.gregorianDate == todayString,
+                            isToday = day.gregorianDate == today,
                             isSelected = selectedDay?.gregorianDate == day.gregorianDate,
-                            onClick = { com.orthodox.calendar.ui.util.Haptics.selection(view); selectedDay = day },
+                            onClick = {
+                                com.orthodox.calendar.ui.util.Haptics.selection(view)
+                                selectedDate = day.gregorianDate
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 2.dp)

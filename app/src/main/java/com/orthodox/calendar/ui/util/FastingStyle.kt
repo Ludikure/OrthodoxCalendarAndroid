@@ -1,5 +1,6 @@
 package com.orthodox.calendar.ui.util
 
+import java.util.Locale
 /**
  * Which visual bucket a fasting type falls in.
  *
@@ -14,7 +15,7 @@ package com.orthodox.calendar.ui.util
 enum class FastingStyle { STRICT, WATER, OIL, FISH, FREE }
 
 fun fastingStyle(type: String): FastingStyle {
-    val t = type.lowercase()
+    val t = type.lowercase(Locale.ROOT)
     return when {
         t == "totalabstinence" || t == "dryeating" -> FastingStyle.STRICT
         t.contains("nooil") -> FastingStyle.WATER

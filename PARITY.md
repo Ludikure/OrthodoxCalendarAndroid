@@ -61,5 +61,22 @@ Any change here is applied to **both** apps in the same change-set.
 
 - Persistence keys differ by platform idiom (iOS `UserDefaults` camelCase vs Android
   `DataStore` snake_case); only the stored **values** must match.
-- Store URLs differ: iOS uses `appStoreUrl`; Android prefers `playStoreUrl`, falling back
-  to `market://details?id=com.orthodox.calendar`.
+- Store URLs differ by platform. iOS reads `appStoreUrl` and has no fallback — no URL in
+  `/api/config`, no button. Android prefers `playStoreUrl` but accepts it only as `https`
+  on `play.google.com` or `market.android.com` (`AppUpdateGate.isStoreUrl`), falling back
+  to `https://play.google.com/store/apps/details?id=<applicationId>`. `market://` is not
+  used on purpose: it needs a Play Store app to resolve, while the https link works on a
+  browser-only device and outside the app. Consequence for the Worker: a `market://`
+  `playStoreUrl` is silently ignored by Android and would be followed by iOS — keep the
+  config on `https`.
+- The update action diverges where the platforms can fail differently. Android wraps
+  `startActivity` in `runCatching` and does nothing when no app resolves the URL — the
+  one screen whose whole job is to get a user unstuck must not crash them further; the
+  share sheet reports failure and toasts instead (`shareDay` returns whether it started).
+  iOS uses `openURL`, which has no equivalent failure to handle.
+- The month-grid fasting legend differs deliberately: Android names five buckets (Strict,
+  Water, Oil, Fish, Feast) in a wrapping row, iOS still names four. Both platforms tint a
+  `hotNoOil` day with `fastWater` (iOS `CalendarGridView` tints on `nooil` too), so iOS
+  currently shows a colour nothing explains — one day a year today, and any year the
+  pipeline can produce more of. Port the fifth entry to iOS rather than removing it from
+  Android.

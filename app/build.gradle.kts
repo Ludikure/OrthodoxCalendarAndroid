@@ -64,6 +64,14 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged manifest and resources to build a real
+            // Context; without this the app's own resources are invisible to tests.
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -83,4 +91,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }

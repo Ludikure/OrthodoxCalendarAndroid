@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark counterpart of values/colors.xml; mirrors the dark branch of
+         AppColors.warmBg in ui/theme/AppColors.kt. -->
+    <color name="window_background">#FF1C1A17</color>
+</resources>

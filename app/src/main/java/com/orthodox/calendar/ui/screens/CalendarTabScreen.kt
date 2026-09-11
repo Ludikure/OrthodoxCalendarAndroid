@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalView
 import com.orthodox.calendar.ui.util.Haptics
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,17 +32,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.orthodox.calendar.ui.components.CalendarLoadFailureView
 import com.orthodox.calendar.ui.components.CalendarTitle
 import com.orthodox.calendar.ui.components.FastingPeriodBanner
 import com.orthodox.calendar.ui.components.MonthHeaderBar
 import com.orthodox.calendar.ui.components.MonthListScreen
 import com.orthodox.calendar.ui.screen.datepicker.DatePickerSheet
 import com.orthodox.calendar.ui.screen.grid.CalendarGridScreen
+import com.orthodox.calendar.ui.components.defaultNoDataMessage
+import com.orthodox.calendar.ui.components.defaultOfflineMessage
+import com.orthodox.calendar.ui.components.defaultRetryLabel
 import com.orthodox.calendar.ui.theme.AppColors
 import java.util.Locale
 import com.orthodox.calendar.ui.viewmodel.CalendarViewModel
@@ -124,6 +122,8 @@ fun CalendarTabScreen(
             viewMode = uiState.viewMode,
             monthName = localization.ui.months.getOrElse(uiState.currentMonth - 1) { "" },
             language = uiState.language,
+            canGoPrevious = uiState.canGoPrevious,
+            canGoNext = uiState.canGoNext,
             onPreviousMonth = { viewModel.goToPreviousMonth() },
             onNextMonth = { viewModel.goToNextMonth() },
             onViewModeChange = { viewModel.setViewMode(it) },
@@ -137,7 +137,10 @@ fun CalendarTabScreen(
         // "Day 24 of 34" of the Apostles' Fast days after it ended. When browsing
         // another month we show that month's season as an overview (name + range,
         // no day index — there is no "current day" there).
-        val today = java.time.LocalDate.now().toString()
+        // Read from state, not `LocalDate.now()` here: a date taken during
+        // composition is frozen at that frame, and this value decides both
+        // whether the banner may show a day index and which day it counts.
+        val today = uiState.today
         val todayInView = uiState.daysInMonth.any { it.gregorianDate == today }
         val focalDate = if (todayInView) {
             today.takeIf { uiState.fastingPeriods.containsKey(it) }
@@ -158,9 +161,14 @@ fun CalendarTabScreen(
         }
 
         // Calendar content - switch on view mode, or show loading/offline/error
+        //
+        // `loadData` clears the days it is about to replace, so an empty list
+        // here means exactly "what the header names has not arrived yet" — that
+        // is what lets a bare `isLoading` drive the spinner. It used to have to
+        // share the condition with an emptiness test it could not trust, and the
+        // month stayed invisible under a spinner-less screen while a downloaded
+        // year arrived.
         if (uiState.isLoading && uiState.daysInMonth.isEmpty()) {
-            // A downloaded year takes a second or so; without this the screen
-            // is simply empty and reads as a hang.
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -194,6 +202,8 @@ fun CalendarTabScreen(
                         localization = localization,
                         language = uiState.language,
                         loadedLocale = uiState.loadedLocale,
+                        loadedContentKey = uiState.loadedContentKey,
+                        today = uiState.today,
                         scrollToTodayTrigger = uiState.scrollToTodayTrigger,
                         onDayClick = onDayClick
                     )
@@ -204,6 +214,8 @@ fun CalendarTabScreen(
                         localization = localization,
                         language = uiState.language,
                         loadedLocale = uiState.loadedLocale,
+                        loadedContentKey = uiState.loadedContentKey,
+                        today = uiState.today,
                         onDayClick = onDayClick
                     )
                 }
@@ -242,66 +254,6 @@ fun CalendarTabScreen(
         }
     }
 }
-
-/** Offline/error state with a retry action. Mirror of iOS CalendarLoadFailureView. */
-@Composable
-private fun CalendarLoadFailureView(
-    message: String,
-    retryLabel: String,
-    onRetry: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "⛪", fontSize = 40.sp)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = message,
-            fontSize = 16.sp,
-            color = AppColors.bodyText,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = retryLabel,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = AppColors.warmBg,
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(AppColors.crimson)
-                .clickable { onRetry() }
-                .padding(horizontal = 24.dp, vertical = 10.dp)
-        )
-    }
-}
-
-private fun defaultOfflineMessage(language: com.orthodox.calendar.data.model.AppLanguage): String =
-    when (language) {
-        com.orthodox.calendar.data.model.AppLanguage.SR ->
-            "Немогуће учитавање података. Проверите везу."
-        com.orthodox.calendar.data.model.AppLanguage.RU ->
-            "Не удалось загрузить данные. Проверьте соединение."
-        com.orthodox.calendar.data.model.AppLanguage.EN,
-        com.orthodox.calendar.data.model.AppLanguage.EN_NC ->
-            "Couldn't load data. Check your connection."
-    }
-
-/** A year the archive does not cover, as opposed to one that failed to download.
- *  Kept here rather than in the shared `ui` strings so the two apps'
- *  localization bundles stay byte-identical. */
-private fun defaultNoDataMessage(language: com.orthodox.calendar.data.model.AppLanguage, year: Int): String =
-    when (language) {
-        com.orthodox.calendar.data.model.AppLanguage.SR -> "Нема података за $year. годину."
-        com.orthodox.calendar.data.model.AppLanguage.RU -> "Нет данных за $year год."
-        com.orthodox.calendar.data.model.AppLanguage.EN,
-        com.orthodox.calendar.data.model.AppLanguage.EN_NC -> "No calendar data for $year."
-    }
-
 
 private fun defaultSearchLabel(language: com.orthodox.calendar.data.model.AppLanguage): String =
     when (language) {

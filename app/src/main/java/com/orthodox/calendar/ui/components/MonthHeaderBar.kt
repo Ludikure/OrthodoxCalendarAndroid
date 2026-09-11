@@ -36,7 +36,6 @@ import com.orthodox.calendar.ui.util.gridViewLabel
 import com.orthodox.calendar.ui.util.listViewLabel
 import com.orthodox.calendar.ui.util.nextMonthLabel
 import com.orthodox.calendar.ui.util.previousMonthLabel
-import com.orthodox.calendar.ui.viewmodel.CalendarUiState
 import com.orthodox.calendar.ui.viewmodel.ViewMode
 
 private val headerColor = Color(0xFF7A1B1B)
@@ -48,6 +47,8 @@ fun MonthHeaderBar(
     viewMode: ViewMode,
     monthName: String,
     language: AppLanguage,
+    canGoPrevious: Boolean,
+    canGoNext: Boolean,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onViewModeChange: (ViewMode) -> Unit,
@@ -63,9 +64,11 @@ fun MonthHeaderBar(
     ) {
         val view = LocalView.current
         // The archive covers 2024-2099; stepping outside it loads nothing and
-        // strands the user on an empty month. The date picker already stops here.
-        val atFirstMonth = currentYear <= CalendarUiState.MIN_YEAR && currentMonth <= 1
-        val atLastMonth = currentYear >= CalendarUiState.MAX_YEAR && currentMonth >= 12
+        // strands the user on an empty month. The rule itself lives in
+        // CalendarArchive — this view is told the answer rather than restating
+        // it, as it did here until four places each had their own copy.
+        val atFirstMonth = !canGoPrevious
+        val atLastMonth = !canGoNext
         // Previous month
         IconButton(
             onClick = { Haptics.selection(view); onPreviousMonth() },

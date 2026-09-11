@@ -99,7 +99,7 @@ fun SaintSearchScreen(
     // Debounced search
     LaunchedEffect(query) {
         delay(200)
-        val q = query.lowercase().trim()
+        val q = query.lowercase(Locale.ROOT).trim()
         if (q.length < 2) {
             results = emptyList()
             return@LaunchedEffect
@@ -146,9 +146,14 @@ fun SaintSearchScreen(
         }
     }
 
-    // Auto-focus search field
+    /* Auto-focus the search field. `requestFocus()` throws
+     * IllegalStateException("FocusRequester is not initialized") when it runs
+     * before the modifier has attached to a view, which is documented framework
+     * behaviour and reachable when this screen is restored into a composition
+     * that has not laid out yet. A search box the user taps once is a far
+     * smaller failure than crashing the screen. */
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        runCatching { focusRequester.requestFocus() }
     }
 
     Scaffold(

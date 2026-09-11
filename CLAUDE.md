@@ -127,3 +127,42 @@ Four locales: `SR`, `RU`, `EN`, `EN_NC` (New Calendar).
 3. **CalendarDay identity**: Use `gregorianDate` as key in `LazyColumn`. When locale changes, recompose by changing the list key.
 4. **MonthHeaderBar callbacks**: `onPreviousMonth`/`onNextMonth` are `() -> Unit`. The IconButton `onClick` wraps them with haptics — don't double-wrap.
 5. **Fasting colors**: `fastStrictBg`, `fastWaterBg`, etc. are `@Composable` getters. Use them inside composable scope only.
+
+## Review findings
+
+`docs/code-review-pass-3.md` holds the findings of the third full-codebase
+review (P1 stale month under a new month header, P1 blank app on a failed DataStore
+read, P2 permanent spinner when a day cannot be resolved, P2 unguarded share intent,
+P2 missing fasting badge on Jan 1 / Dec 31, plus P3 hygiene), annotated item by item: everything
+in it is now fixed except the splash gating and the share-text `drop(1)`, both
+deliberate and marked there, and its "Checked and found correct" list still stands. All
+three passes are folded into `docs/release-notes-1.5.1.md` (pass three under
+"Also fixed (third review pass)") — do not re-report anything from that file's
+cleared list. `docs/handoff-pass-3.md` records the verified state and the rules below.
+
+These are easy to undo by accident:
+
+* **Never call `advanceUntilIdle()` in a test.** `CalendarViewModel.startTodayTicker`
+  sleeps to midnight and re-arms, so the shared `TestCoroutineScheduler` never idles
+  and `testDebugUnitTest` spins silently — indistinguishable from a hung compiler, and
+  mistaken for one. `CalendarViewModelTest` advances a bounded slice instead and
+  cancels the ViewModel's scope in a `finally`; write new tests through its
+  `calendarTest` helper.
+* **`TRIM_MEMORY_UI_HIDDEN` is not memory pressure** (`app/MemoryTrim.kt`);
+  `MemoryTrimTest` fails if it ever becomes a releasing level. **`TRIM_MEMORY_BACKGROUND`
+  is**, and must stay one: on API 34+ those two are the only levels an app is sent,
+  so a release set without BACKGROUND never runs.
+* **`CalendarViewModel` must keep `@JvmOverloads` on its constructor.** `viewModel()`
+  builds it by reflection through `(Application)`, which Kotlin emits for a
+  constructor with default arguments only when asked. Without it every launch
+  crashes while every test that constructs the ViewModel directly still passes;
+  `ViewModelFactoryTest` builds it the app's way.
+* **"Today" is refreshed on ON_START, not only at midnight.** A coroutine `delay` on
+  the main thread runs on uptime, which stops in deep sleep. `MainActivity` calls
+  `refreshToday()` from a `LifecycleStartEffect`, which also re-arms the tick.
+
+And the two consolidations a reviewer asked for: the archive bounds live in
+`CalendarArchive` (declared in `ui/viewmodel/CalendarViewModel.kt`, with
+`canGoPrevious`/`canGoNext` — nothing else may restate `2024`/`2099`), and the fasting
+colour/label mapping in `ui/util/FastingVisuals.kt` — do not reintroduce per-screen
+copies of either.

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The window background: what the window shows before Compose paints, and
+      what shows through for the moment under the splash. The values mirror
+      AppColors.warmBg in ui/theme/AppColors.kt (light #F5F3EE, dark #1C1A17) —
+      a Compose constant and an XML colour cannot share a definition, so if that
+      one changes these change with it.
+
+      Without the night variant the window was white under a dark app theme: a
+      white flash beneath the splash and a light launch preview in Recents.
+    -->
+    <color name="window_background">#FFF5F3EE</color>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Night variant of the app theme. There was none, so the window kept the
+      Material *light* white background on a device in dark mode: a white flash
+      beneath the splash and a light launch preview in Recents, on an app whose
+      own surface is near-black. Same parent as the light theme (Material, no
+      action bar); every colour the app draws comes from AppColors through
+      LocalIsDarkTheme, so nothing else about the theme matters to it.
+
+      This covers the window before the Activity has drawn. When the user picks
+      DARK while the system stays light, MainActivity repaints the window
+      background to match — see MainActivity.syncWindowBackground.
+    -->
+    <style name="Theme.OrthodoxCalendar" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

@@ -20,25 +20,29 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
 @Composable
 fun MonthListScreen(
     days: List<CalendarDay>,
     localization: LocalizationBundle,
     language: AppLanguage,
     loadedLocale: String,
+    loadedContentKey: String,
+    today: String,
     scrollToTodayTrigger: Boolean,
     modifier: Modifier = Modifier,
     onDayClick: (CalendarDay) -> Unit = {}
 ) {
-    val todayString = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT))
+    val todayString = today
     val listState = rememberLazyListState()
 
-    // Scroll to today when trigger changes or days load
-    LaunchedEffect(scrollToTodayTrigger, days.size) {
+    // Scroll to today when the trigger changes or a month's days arrive.
+    //
+    // `loadedContentKey`, not the old `days.size`: it changes exactly when new
+    // content lands, whereas January and March have the same length and skipped
+    // the scroll. Keying on the *loaded* month rather than the requested one is
+    // also what keeps this from running against the previous month's rows while
+    // the new one is still in flight.
+    LaunchedEffect(loadedContentKey, scrollToTodayTrigger) {
         val todayIndex = days.indexOfFirst { it.gregorianDate == todayString }
         if (todayIndex >= 0) {
             listState.animateScrollToItem(todayIndex)

@@ -1,5 +1,6 @@
 package com.orthodox.calendar.ui.util
 
+import java.util.Locale
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.ScriptureReading
 
@@ -26,7 +27,7 @@ fun serviceLabel(reading: ScriptureReading, language: AppLanguage): String? {
     val source = reading.source?.takeIf { it.isNotBlank() } ?: return null
     val parts = source.split(',').mapNotNull { sourcePart(it.trim(), language) }
     if (parts.isEmpty()) return null
-    return parts.joinToString(", ").replaceFirstChar { it.uppercase() }
+    return parts.joinToString(", ").replaceFirstChar { it.uppercase(Locale.ROOT) }
 }
 
 private val ORDINAL = Regex("""^(\d{1,2})(?:st|nd|rd|th)\s+(.+)$""")
@@ -34,7 +35,7 @@ private val ORDINAL = Regex("""^(\d{1,2})(?:st|nd|rd|th)\s+(.+)$""")
 private fun sourcePart(part: String, language: AppLanguage): String? {
     val match = ORDINAL.matchEntire(part)
     val ordinal = match?.groupValues?.get(1)?.toIntOrNull()
-    val noun = (match?.groupValues?.get(2) ?: part).trim().lowercase()
+    val noun = (match?.groupValues?.get(2) ?: part).trim().lowercase(Locale.ROOT)
 
     return when (noun) {
         // "Gospel"/"Epistle"/"Prophecy" only restate the reading's own type,
@@ -121,7 +122,8 @@ private fun ordinalEn(n: Int): String {
  * `title` ("Песма прва") already says what they are — and the card used to
  * print the literal word OTHER above them.
  */
-fun readingTypeLabel(type: String, language: AppLanguage): String? = when (type.lowercase()) {
+fun readingTypeLabel(type: String, language: AppLanguage): String? =
+    when (type.lowercase(Locale.ROOT)) {
     "gospel" -> when (language) {
         AppLanguage.SR -> "ЈЕВАНЂЕЉЕ"
         AppLanguage.RU -> "ЕВАНГЕЛИЕ"

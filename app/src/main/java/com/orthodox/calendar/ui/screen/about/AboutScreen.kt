@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import java.util.Locale
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.ui.util.backLabel
 import com.orthodox.calendar.ui.theme.AppColors
@@ -266,7 +267,7 @@ private fun openLink(context: android.content.Context, url: String) {
 @Composable
 private fun SectionTitle(title: String) {
     Text(
-        text = title.uppercase(),
+        text = title.uppercase(Locale.ROOT),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.sp,

@@ -27,8 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
-import com.orthodox.calendar.ui.util.FastingStyle
-import com.orthodox.calendar.ui.util.fastingStyle
+import com.orthodox.calendar.ui.util.fastingVisuals
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -189,16 +188,9 @@ fun DayRowView(
 
 @Composable
 private fun FastingBadge(day: CalendarDay) {
-    val t = day.fasting.type.lowercase()
-    val (icon, color, bg) = when (fastingStyle(t)) {
-        FastingStyle.STRICT -> Triple(
-            if (t == "dryeating") "\uD83C\uDF5E" else "\uD83D\uDEAB",
-            AppColors.fastStrict, AppColors.fastStrictBg)
-        FastingStyle.WATER -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
-        FastingStyle.OIL -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
-        FastingStyle.FISH -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
-        else -> Triple("\u2713", AppColors.fastFree, AppColors.fastFreeBg)
-    }
+    // The app-wide mapping from a fasting type to icon/ink/tint; this used to be
+    // one of four private copies of it. See fastingVisuals.
+    val (icon, color, bg) = fastingVisuals(day.fasting.type)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

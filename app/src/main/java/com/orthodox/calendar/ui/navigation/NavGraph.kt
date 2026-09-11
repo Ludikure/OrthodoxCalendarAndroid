@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,7 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.navArgument
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.components.CalendarLoadFailureView
+import com.orthodox.calendar.ui.components.defaultNoDataMessage
+import com.orthodox.calendar.ui.components.defaultOfflineMessage
+import com.orthodox.calendar.ui.components.defaultRetryLabel
 import com.orthodox.calendar.ui.util.backLabel
+import com.orthodox.calendar.ui.util.parseIsoDate
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.ui.screen.about.AboutScreen
 import com.orthodox.calendar.ui.screen.detail.DayDetailScreen
@@ -36,7 +42,9 @@ import com.orthodox.calendar.ui.screen.search.SaintSearchScreen
 import com.orthodox.calendar.ui.screen.settings.SettingsScreen
 import com.orthodox.calendar.ui.screen.splash.SplashScreen
 import com.orthodox.calendar.ui.screens.CalendarTabScreen
+import com.orthodox.calendar.ui.viewmodel.CalendarUiState
 import com.orthodox.calendar.ui.viewmodel.CalendarViewModel
+import com.orthodox.calendar.ui.viewmodel.DayOutcome
 import java.util.Locale
 
 @Composable
@@ -88,35 +96,41 @@ fun NavGraph(
             arguments = listOf(navArgument("gregorianDate") { type = NavType.StringType })
         ) { backStackEntry ->
             val gregorianDate = backStackEntry.arguments?.getString("gregorianDate") ?: return@composable
-            // Resolving from daysInMonth alone rendered *nothing* — no scaffold,
-            // no back button — whenever the target month had not finished
-            // loading, which is exactly the case when arriving from search or
-            // the date picker. Ask the repository, and show a way back meanwhile.
-            var day by remember(gregorianDate) {
-                mutableStateOf(uiState.daysInMonth.firstOrNull { it.gregorianDate == gregorianDate })
-            }
-            LaunchedEffect(gregorianDate) {
-                if (day == null) day = viewModel.dayFor(gregorianDate)
-            }
-
-            val resolved = day
-            if (resolved == null || localization == null) {
-                DayDetailPlaceholder(
+            var attempt by remember(gregorianDate) { mutableIntStateOf(0) }
+            when (val outcome = dayOutcome(viewModel, gregorianDate, attempt, uiState)) {
+                is DayOutcome.Loading -> DayDetailPlaceholder(
                     language = uiState.language,
                     onBack = { navController.popBackStack() }
                 )
-            } else {
-                DayDetailScreen(
-                    day = resolved,
-                    localization = localization,
+                is DayOutcome.Missing -> DayDetailUnresolved(
                     language = uiState.language,
-                    bibleTranslation = uiState.bibleTranslation,
-                    periodInfo = uiState.fastingPeriods[gregorianDate],
+                    gregorianDate = gregorianDate,
+                    offline = outcome is DayOutcome.Missing.Offline,
                     onBack = { navController.popBackStack() },
-                    onAddReminder = {
-                        navController.navigate("reminder/$gregorianDate")
-                    }
+                    onRetry = { attempt++ }
                 )
+                is DayOutcome.Found -> {
+                    if (localization == null) {
+                        // The bundle is on its way; this is the one case where a
+                        // spinner is the honest answer.
+                        DayDetailPlaceholder(
+                            language = uiState.language,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        DayDetailScreen(
+                            day = outcome.day,
+                            localization = localization,
+                            language = uiState.language,
+                            bibleTranslation = uiState.bibleTranslation,
+                            periodInfo = outcome.periodInfo,
+                            onBack = { navController.popBackStack() },
+                            onAddReminder = {
+                                navController.navigate("reminder/$gregorianDate")
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -125,30 +139,34 @@ fun NavGraph(
             arguments = listOf(navArgument("gregorianDate") { type = NavType.StringType })
         ) { backStackEntry ->
             val gregorianDate = backStackEntry.arguments?.getString("gregorianDate") ?: return@composable
-            // Resolving from daysInMonth alone rendered *nothing* — no scaffold,
-            // no back button — whenever the target month had not finished
-            // loading, which is exactly the case when arriving from search or
-            // the date picker. Ask the repository, and show a way back meanwhile.
-            var day by remember(gregorianDate) {
-                mutableStateOf(uiState.daysInMonth.firstOrNull { it.gregorianDate == gregorianDate })
-            }
-            LaunchedEffect(gregorianDate) {
-                if (day == null) day = viewModel.dayFor(gregorianDate)
-            }
-
-            val resolved = day
-            if (resolved == null || localization == null) {
-                DayDetailPlaceholder(
+            var attempt by remember(gregorianDate) { mutableIntStateOf(0) }
+            when (val outcome = dayOutcome(viewModel, gregorianDate, attempt, uiState)) {
+                is DayOutcome.Loading -> DayDetailPlaceholder(
                     language = uiState.language,
                     onBack = { navController.popBackStack() }
                 )
-            } else {
-                AddReminderScreen(
-                    day = resolved,
-                    localization = localization,
+                is DayOutcome.Missing -> DayDetailUnresolved(
                     language = uiState.language,
-                    onBack = { navController.popBackStack() }
+                    gregorianDate = gregorianDate,
+                    offline = outcome is DayOutcome.Missing.Offline,
+                    onBack = { navController.popBackStack() },
+                    onRetry = { attempt++ }
                 )
+                is DayOutcome.Found -> {
+                    if (localization == null) {
+                        DayDetailPlaceholder(
+                            language = uiState.language,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        AddReminderScreen(
+                            day = outcome.day,
+                            localization = localization,
+                            language = uiState.language,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                }
             }
         }
 
@@ -197,22 +215,47 @@ fun NavGraph(
 }
 
 
-/** Shown while a day is still being resolved, or when it cannot be. Its only job
- *  is to never leave the user on a blank screen with no way back. */
+/**
+ * Resolves one date into a day through the ViewModel, re-running on [attempt].
+ *
+ * The routes used to resolve from `uiState.daysInMonth` alone, which rendered
+ * *nothing* — no scaffold, no back button — whenever the target month had not
+ * finished loading: exactly the case when arriving from search or the date
+ * picker. Asking the ViewModel fixed the "nothing"; returning a plain nullable
+ * day then turned "this year cannot be loaded" into an endless spinner, because
+ * "not yet" and "never" were the same value. The outcome says which.
+ *
+ * The first frame resolves from the days already on screen, so tapping a day in
+ * the list opens it without a spinner flash.
+ */
+@Composable
+private fun dayOutcome(
+    viewModel: CalendarViewModel,
+    gregorianDate: String,
+    attempt: Int,
+    uiState: CalendarUiState
+): DayOutcome {
+    var outcome by remember(gregorianDate, attempt) {
+        mutableStateOf<DayOutcome>(
+            uiState.daysInMonth
+                .firstOrNull { it.gregorianDate == gregorianDate }
+                ?.let { DayOutcome.Found(it, uiState.fastingPeriods[gregorianDate]) }
+                ?: DayOutcome.Loading
+        )
+    }
+    LaunchedEffect(gregorianDate, attempt) {
+        outcome = viewModel.resolveDay(gregorianDate)
+    }
+    return outcome
+}
+
+/** Shown while a day is still being resolved. Its only job is to never leave the
+ *  user on a blank screen with no way back. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DayDetailPlaceholder(language: AppLanguage, onBack: () -> Unit) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel(language))
-                    }
-                }
-            )
-        }
+        topBar = { DayDetailTopBar(onBack = onBack, language = language) }
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -222,3 +265,43 @@ private fun DayDetailPlaceholder(language: AppLanguage, onBack: () -> Unit) {
         }
     }
 }
+
+/**
+ * The day could not be resolved — the archive does not cover that year, or the
+ * data could not be fetched. Before this existed the route treated it the same
+ * as "still loading": a spinner with no retry and no explanation.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayDetailUnresolved(
+    language: AppLanguage,
+    gregorianDate: String,
+    offline: Boolean,
+    onBack: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Scaffold(
+        topBar = { DayDetailTopBar(onBack = onBack, language = language) }
+    ) { padding ->
+        val year = parseIsoDate(gregorianDate)?.year
+        CalendarLoadFailureView(
+            message = if (offline || year == null) defaultOfflineMessage(language)
+            else defaultNoDataMessage(language, year),
+            retryLabel = defaultRetryLabel(language),
+            onRetry = onRetry,
+            modifier = Modifier.padding(padding)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayDetailTopBar(onBack: () -> Unit, language: AppLanguage) =
+    TopAppBar(
+        title = {},
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel(language))
+            }
+        }
+    )

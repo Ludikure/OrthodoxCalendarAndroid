@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import java.util.Locale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.BuildConfig
@@ -203,7 +204,9 @@ fun SettingsScreen(
 @Composable
 private fun SectionHeader(title: String) {
     Text(
-        text = title.uppercase(),
+        // Locale.ROOT is explicit rather than a fix: Kotlin's no-argument
+        // uppercase() is already locale-invariant, unlike Java's toUpperCase().
+        text = title.uppercase(Locale.ROOT),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.sp,

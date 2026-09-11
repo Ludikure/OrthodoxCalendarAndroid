@@ -1,6 +1,7 @@
 package com.orthodox.calendar.data.model
 
 import java.time.LocalDate
+import java.util.Locale
 
 /**
  * A day's place within a named fasting season (Great Lent, Nativity Fast, etc.).
@@ -55,7 +56,7 @@ object FastingPeriods {
 
     fun displayName(code: String, names: Map<String, String>): String {
         val key = CODE_TO_KEY[code]
-            ?: code.split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            ?: code.split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase(Locale.ROOT) } }
         return names[key] ?: key
     }
 
@@ -74,25 +75,30 @@ object FastingPeriods {
         val minDate = allDates.minOrNull()
         val maxDate = allDates.maxOrNull()
 
-        val sorted = days.filter { it.fastingPeriod != null }.sortedBy { it.gregorianDate }
+        /* In-season days paired with their period code, in date order. Pairing
+         * here rather than filtering on `fastingPeriod != null` and asserting it
+         * at each use keeps the invariant where it can be checked. Entries are
+         * `date to code`. */
+        val sorted = days.mapNotNull { day -> day.fastingPeriod?.let { day.gregorianDate to it } }
+            .sortedBy { it.first }
         val result = HashMap<String, FastingPeriodInfo>()
         var i = 0
         while (i < sorted.size) {
-            val code = sorted[i].fastingPeriod!!
+            val code = sorted[i].second
             var j = i
             while (j + 1 < sorted.size) {
                 val next = sorted[j + 1]
-                val consecutive = LocalDate.parse(next.gregorianDate) ==
-                    LocalDate.parse(sorted[j].gregorianDate).plusDays(1)
-                if (next.fastingPeriod == code && consecutive) j++ else break
+                val consecutive = LocalDate.parse(next.first) ==
+                    LocalDate.parse(sorted[j].first).plusDays(1)
+                if (next.second == code && consecutive) j++ else break
             }
             val run = sorted.subList(i, j + 1)
-            val start = LocalDate.parse(run.first().gregorianDate)
-            val end = LocalDate.parse(run.last().gregorianDate)
-            val complete = run.first().gregorianDate != minDate && run.last().gregorianDate != maxDate
+            val start = LocalDate.parse(run.first().first)
+            val end = LocalDate.parse(run.last().first)
+            val complete = run.first().first != minDate && run.last().first != maxDate
             val name = displayName(code, names)
-            run.forEachIndexed { idx, d ->
-                result[d.gregorianDate] =
+            run.forEachIndexed { idx, entry ->
+                result[entry.first] =
                     FastingPeriodInfo(code, name, start, end, idx + 1, run.size, complete)
             }
             i = j + 1

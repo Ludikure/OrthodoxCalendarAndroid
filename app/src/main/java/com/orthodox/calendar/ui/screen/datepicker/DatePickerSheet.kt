@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
-import com.orthodox.calendar.ui.viewmodel.CalendarUiState
+import com.orthodox.calendar.ui.viewmodel.CalendarArchive
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -125,10 +125,10 @@ fun DatePickerSheet(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(
-                    onClick = { if (pickerYear > CalendarUiState.MIN_YEAR) pickerYear-- },
-                    enabled = pickerYear > CalendarUiState.MIN_YEAR
+                    onClick = { if (pickerYear > CalendarArchive.MIN_YEAR) pickerYear-- },
+                    enabled = pickerYear > CalendarArchive.MIN_YEAR
                 ) {
-                    Text(text = "\u276E", fontSize = 18.sp, color = if (pickerYear > CalendarUiState.MIN_YEAR) AppColors.darkText else AppColors.mutedText.copy(alpha = 0.3f))
+                    Text(text = "\u276E", fontSize = 18.sp, color = if (pickerYear > CalendarArchive.MIN_YEAR) AppColors.darkText else AppColors.mutedText.copy(alpha = 0.3f))
                 }
                 Text(
                     text = pickerYear.toString(),
@@ -136,10 +136,10 @@ fun DatePickerSheet(
                     fontSize = 22.sp
                 )
                 IconButton(
-                    onClick = { if (pickerYear < CalendarUiState.MAX_YEAR) pickerYear++ },
-                    enabled = pickerYear < CalendarUiState.MAX_YEAR
+                    onClick = { if (pickerYear < CalendarArchive.MAX_YEAR) pickerYear++ },
+                    enabled = pickerYear < CalendarArchive.MAX_YEAR
                 ) {
-                    Text(text = "\u276F", fontSize = 18.sp, color = if (pickerYear < CalendarUiState.MAX_YEAR) AppColors.darkText else AppColors.mutedText.copy(alpha = 0.3f))
+                    Text(text = "\u276F", fontSize = 18.sp, color = if (pickerYear < CalendarArchive.MAX_YEAR) AppColors.darkText else AppColors.mutedText.copy(alpha = 0.3f))
                 }
             }
 
@@ -225,7 +225,7 @@ fun DatePickerSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                val atMin = pickerYear <= CalendarUiState.MIN_YEAR && pickerMonth <= 1
+                val atMin = !CalendarArchive.canGoPrevious(pickerMonth, pickerYear)
                 IconButton(
                     onClick = {
                         if (pickerMonth == 1) { pickerMonth = 12; pickerYear-- }
@@ -253,7 +253,7 @@ fun DatePickerSheet(
                     }
                 }
 
-                val atMax = pickerYear >= CalendarUiState.MAX_YEAR && pickerMonth >= 12
+                val atMax = !CalendarArchive.canGoNext(pickerMonth, pickerYear)
                 IconButton(
                     onClick = {
                         if (pickerMonth == 12) { pickerMonth = 1; pickerYear++ }

@@ -11,8 +11,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.orthodox.calendar.ui.theme.LocalIsDarkTheme
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.orthodox.calendar.ui.navigation.NavGraph
@@ -43,7 +46,25 @@ class MainActivity : ComponentActivity() {
             val storeUrl by updateGate.storeUrl.collectAsState()
             LaunchedEffect(Unit) { updateGate.check() }
 
+            // Re-read the day whenever the activity comes back. The ViewModel's
+            // midnight tick is a coroutine delay, and that runs on uptime, which
+            // stops in deep sleep: a phone left overnight with the app open woke
+            // the tick hours late and showed yesterday as today. Coming back to
+            // the app is when that must be right, so the date is re-checked here
+            // and the tick re-armed from the wall clock.
+            LifecycleStartEffect(viewModel) {
+                viewModel.refreshToday()
+                onStopOrDispose { }
+            }
+
             OrthodoxCalendarTheme(appTheme = uiState.theme) {
+                // The theme the app resolved, not the one the system is in:
+                // see syncWindowBackground.
+                val isDarkTheme = LocalIsDarkTheme.current
+                LaunchedEffect(isDarkTheme) {
+                    this@MainActivity.syncWindowBackground(isDarkTheme)
+                }
+
                 if (mustUpdate) {
                     UpdateRequiredScreen(
                         storeUrl = storeUrl,
@@ -71,5 +92,30 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Paints the window background the colour the app draws over it.
+     *
+     * `values-night/themes.xml` covers a device in dark mode, but the app's own
+     * theme setting can be DARK while the system stays light, and the window
+     * background is a resource the Compose theme cannot reach. Left alone it
+     * stayed framework white: a white flash under the splash and a light launch
+     * preview in Recents, on precisely the setting that makes the app dark.
+     */
+    private fun syncWindowBackground(dark: Boolean) {
+        val argb = if (dark) DARK_WINDOW_BACKGROUND else LIGHT_WINDOW_BACKGROUND
+        window.setBackgroundDrawable(argb.toDrawable())
+    }
+
+    companion object {
+        /**
+         * In step with `AppColors.warmBg` in ui/theme/AppColors.kt and
+         * `res/values/colors.xml` — three definitions because the window, the
+         * Compose theme and the resource bundle cannot share one. Change the
+         * three together.
+         */
+        private const val LIGHT_WINDOW_BACKGROUND = 0xFFF5F3EE.toInt()
+        private const val DARK_WINDOW_BACKGROUND = 0xFF1C1A17.toInt()
     }
 }

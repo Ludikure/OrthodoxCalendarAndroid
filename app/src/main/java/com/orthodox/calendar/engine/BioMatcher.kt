@@ -1,5 +1,7 @@
 package com.orthodox.calendar.engine
 
+import java.util.Locale
+
 /**
  * Pairs each fixed (non-moveable) feast of a day with the saint biography that
  * belongs to it by comparing the distinguishing words of the feast name with
@@ -79,7 +81,10 @@ object BioMatcher {
         // Weak matches only when there is exactly one candidate left for the feast.
         for (i in fixed) {
             if (result[i] != null) continue
-            val candidates = bioTitles.indices.filter { it !in usedBios && scores[i]!![it] >= 1 }
+            // `getValue` rather than `!!`: the row for every `i in fixed` is put
+            // above, and a map lookup that says so keeps the invariant here
+            // instead of asserting it from a distance.
+            val candidates = bioTitles.indices.filter { it !in usedBios && scores.getValue(i)[it] >= 1 }
             if (candidates.size == 1) {
                 result[i] = candidates[0]
                 usedBios.add(candidates[0])
@@ -108,7 +113,7 @@ object BioMatcher {
             if (first.isDigit()) continue
             if (raw.length < 2) continue
             if (raw.length == 2 && !first.isUpperCase()) continue
-            out.add(raw.lowercase())
+            out.add(raw.lowercase(Locale.ROOT))
         }
         return out
     }

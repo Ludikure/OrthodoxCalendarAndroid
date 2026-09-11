@@ -3,6 +3,7 @@ package com.orthodox.calendar.ui.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /**
  * Serbian is read in both alphabets but the `sr` data is Cyrillic-only, so
@@ -64,5 +65,27 @@ class ScriptFoldingTest {
         assertEquals(foldForSearch("никола"), foldForSearch("НИКОЛА"))
         assertEquals(foldForSearch("nikola"), foldForSearch("NIKOLA"))
         assertEquals(foldForSearch("Nikola"), foldForSearch("НИКОЛА"))
+    }
+
+    /**
+     * Kotlin's no-argument `lowercase()`/`uppercase()` are locale-invariant — the
+     * stdlib implements them as `toLowerCase(Locale.ROOT)` — unlike Java's
+     * no-argument `toLowerCase()`. A Turkish or Azerbaijani device language
+     * therefore never reached this code: "I" folds to "i" whatever the phone is
+     * set to. Pinned because a review claimed the opposite and a release note
+     * repeated it as a fix.
+     */
+    @Test
+    fun `folding does not depend on the device language`() {
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            assertEquals("the device language really is Turkish here", "ı", "I".lowercase(Locale.getDefault()))
+            assertEquals("...and the no-argument form ignores it", "i", "I".lowercase())
+            assertEquals("I", "i".uppercase())
+            assertEquals(foldForSearch("Иван"), foldForSearch("Ivan"))
+        } finally {
+            Locale.setDefault(saved)
+        }
     }
 }

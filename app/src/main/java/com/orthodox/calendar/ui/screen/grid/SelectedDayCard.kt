@@ -28,8 +28,8 @@ import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.FastingPeriods
 import com.orthodox.calendar.data.model.LocalizationBundle
-import com.orthodox.calendar.ui.util.FastingStyle
-import com.orthodox.calendar.ui.util.fastingStyle
+import com.orthodox.calendar.ui.util.fastingInk
+import com.orthodox.calendar.ui.util.normalizeFastingType
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -103,12 +103,15 @@ fun SelectedDayCard(
             )
 
             // Fasting info
-            val fastType = day.fasting.type.lowercase()
+            val fastType = normalizeFastingType(day.fasting.type)
             if (fastType != "free") {
                 Spacer(modifier = Modifier.height(4.dp))
+                // Resolved out here: the Canvas lambda is a DrawScope, not a
+                // composable, and the colour comes from the theme.
+                val ink = fastingInk(fastType)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Canvas(modifier = Modifier.size(8.dp)) {
-                        drawCircle(color = fastingColor(fastType))
+                        drawCircle(color = ink)
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -133,12 +136,4 @@ fun SelectedDayCard(
     }
 }
 
-private fun fastingColor(type: String): Color {
-    return when (fastingStyle(type)) {
-        FastingStyle.STRICT -> AppColors.fastStrict
-        FastingStyle.WATER -> AppColors.fastWater
-        FastingStyle.OIL -> AppColors.fastOil
-        FastingStyle.FISH -> AppColors.fastFish
-        else -> Color.Transparent
-    }
-}
+

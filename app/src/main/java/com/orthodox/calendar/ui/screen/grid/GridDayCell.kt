@@ -26,8 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.CalendarDay
-import com.orthodox.calendar.ui.util.FastingStyle
-import com.orthodox.calendar.ui.util.fastingStyle
+import com.orthodox.calendar.ui.util.fastingInk
+import com.orthodox.calendar.ui.util.fastingInkOrNull
+import com.orthodox.calendar.ui.util.normalizeFastingType
 import com.orthodox.calendar.ui.theme.AppColors
 
 @Composable
@@ -40,7 +41,7 @@ fun GridDayCell(
 ) {
     val isGreat = day.isGreatFeast
     val isPascha = day.greatFeast == "pascha"
-    val fastType = day.fasting.type.lowercase()
+    val fastType = normalizeFastingType(day.fasting.type)
 
     val cellBg: Modifier = when {
         isPascha -> Modifier.background(
@@ -53,7 +54,7 @@ fun GridDayCell(
             AppColors.crimson.copy(alpha = 0.08f),
             shape = RoundedCornerShape(8.dp)
         )
-        else -> fastingTint(fastType)?.let {
+        else -> fastingInkOrNull(fastType)?.let {
             Modifier.background(it.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp))
         } ?: Modifier
     }
@@ -107,8 +108,11 @@ fun GridDayCell(
 
             // Fasting dot
             if (fastType != "free") {
+                // Resolved out here: the Canvas lambda is a DrawScope, not a
+                // composable, and the colour comes from the theme.
+                val ink = fastingInk(fastType)
                 Canvas(modifier = Modifier.size(6.dp)) {
-                    drawCircle(color = fastingColor(fastType))
+                    drawCircle(color = ink)
                 }
             } else {
                 Spacer(modifier = Modifier.height(6.dp))
@@ -142,13 +146,4 @@ fun GridDayCell(
     }
 }
 
-/** Cell tint for a fasting type, or null for a non-fasting day. */
-private fun fastingTint(type: String): Color? = when (fastingStyle(type)) {
-    FastingStyle.STRICT -> AppColors.fastStrict
-    FastingStyle.WATER -> AppColors.fastWater
-    FastingStyle.OIL -> AppColors.fastOil
-    FastingStyle.FISH -> AppColors.fastFish
-    FastingStyle.FREE -> null
-}
 
-private fun fastingColor(type: String): Color = fastingTint(type) ?: Color.Transparent

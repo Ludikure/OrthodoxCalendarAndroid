@@ -1,7 +1,9 @@
 package com.orthodox.calendar.ui.screen.detail
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,9 +54,9 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
 import com.orthodox.calendar.data.model.SaintBio
 import com.orthodox.calendar.engine.BioMatcher
-import com.orthodox.calendar.ui.util.FastingStyle
-import com.orthodox.calendar.ui.util.fastingStyle
+import com.orthodox.calendar.ui.util.fastingVisuals
 import com.orthodox.calendar.ui.theme.AppColors
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +95,16 @@ fun DayDetailScreen(
                             }
                         )
                     }
-                    IconButton(onClick = { shareDay(context, day, localization, language) }) {
+                    IconButton(onClick = {
+                        if (!shareDay(context, day, localization, language)) {
+                            val noShareAppText = when (language) {
+                                AppLanguage.SR -> "\u041D\u0435\u043C\u0430 \u0430\u043F\u043B\u0438\u043A\u0430\u0446\u0438\u0458\u0435 \u0437\u0430 \u0434\u0435\u0459\u045A\u0435."
+                                AppLanguage.RU -> "\u041D\u0435\u0442 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0434\u043B\u044F \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438."
+                                AppLanguage.EN, AppLanguage.EN_NC -> "No app available to share with."
+                            }
+                            Toast.makeText(context, noShareAppText, Toast.LENGTH_LONG).show()
+                        }
+                    }) {
                         Icon(Icons.Default.Share, contentDescription = shareLabel(language))
                     }
                 },
@@ -208,7 +219,7 @@ private fun HeroSection(
                 Text(text = "\u26EA", fontSize = 11.sp)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = period.displayName.uppercase(),
+                    text = period.displayName.uppercase(Locale.ROOT),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
@@ -512,26 +523,22 @@ private fun localizedSaintType(type: String, language: AppLanguage): String {
     }
 }
 
-@Composable
-private fun fastingVisuals(type: String): Triple<String, Color, Color> {
-    val t = type.lowercase()
-    return when (fastingStyle(t)) {
-        FastingStyle.STRICT -> Triple(
-            if (t == "dryeating") "\uD83C\uDF5E" else "\uD83D\uDEAB",
-            AppColors.fastStrict, AppColors.fastStrictBg)
-        FastingStyle.WATER -> Triple("\uD83D\uDCA7", AppColors.fastWater, AppColors.fastWaterBg)
-        FastingStyle.OIL -> Triple("\uD83E\uDED2", AppColors.fastOil, AppColors.fastOilBg)
-        FastingStyle.FISH -> Triple("\uD83D\uDC1F", AppColors.fastFish, AppColors.fastFishBg)
-        else -> Triple("\u2713", AppColors.fastFree, AppColors.fastFreeBg)
-    }
-}
-
+/**
+ * Builds the day's share text and opens the system sheet.
+ *
+ * Returns false when nothing on the device accepted the intent. The share sheet
+ * is one of the few things every Android is expected to have, but a work profile
+ * or a cloned app whose components are momentarily disabled resolves nothing, and
+ * this was the last unguarded `startActivity` in the app: it took the process down
+ * with the richest screen in it open. Handled the same way as the reminder
+ * screen's `ACTION_INSERT`.
+ */
 private fun shareDay(
     context: Context,
     day: CalendarDay,
     localization: LocalizationBundle,
     language: AppLanguage
-) {
+): Boolean {
     val monthName = localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }
     val lines = mutableListOf<String>()
 
@@ -554,5 +561,10 @@ private fun shareDay(
         putExtra(Intent.EXTRA_TEXT, shareText)
         this.type = "text/plain"
     }
-    context.startActivity(Intent.createChooser(sendIntent, null))
+    return try {
+        context.startActivity(Intent.createChooser(sendIntent, null))
+        true
+    } catch (e: ActivityNotFoundException) {
+        false
+    }
 }

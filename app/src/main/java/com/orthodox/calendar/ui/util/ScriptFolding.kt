@@ -1,5 +1,6 @@
 package com.orthodox.calendar.ui.util
 
+import java.util.Locale
 /**
  * Folds Cyrillic and Latin to one form so saint search matches across scripts.
  *
@@ -18,7 +19,7 @@ package com.orthodox.calendar.ui.util
  * Mirror of `SaintSearchView.fold` in the iOS repo; the tables must agree.
  */
 fun foldForSearch(text: String): String =
-    text.lowercase().map { folding[it] ?: it.toString() }.joinToString("")
+    text.lowercase(Locale.ROOT).map { folding[it] ?: it.toString() }.joinToString("")
 
 private val folding: Map<Char, String> = mapOf(
     // Serbian Cyrillic, in Serbian Latin. љ and њ are easy to leave out and
