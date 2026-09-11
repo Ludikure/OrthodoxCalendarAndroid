@@ -73,7 +73,7 @@ fun DayDetailScreen(
     val context = LocalContext.current
     val isGreat = day.isGreatFeast
 
-    val formattedDate = "${day.gregorianDay} ${localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }}"
+    val formattedDate = localization.ui.dayAndMonth(day.gregorianDay, day.gregorianMonth)
 
     Scaffold(
         topBar = {
@@ -539,10 +539,9 @@ private fun shareDay(
     localization: LocalizationBundle,
     language: AppLanguage
 ): Boolean {
-    val monthName = localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }
     val lines = mutableListOf<String>()
 
-    lines.add("\u2626 ${day.gregorianDay} $monthName")
+    lines.add("\u2626 ${localization.ui.dayAndMonth(day.gregorianDay, day.gregorianMonth)}")
     lines.add("")
 
     day.primaryFeast?.let { lines.add(it.name) }

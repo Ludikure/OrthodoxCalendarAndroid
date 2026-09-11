@@ -40,8 +40,17 @@ data class UILabels(
     val retryLabel: String? = null,
     val updateRequiredTitle: String? = null,
     val updateRequiredMessage: String? = null,
-    val updateButton: String? = null
-)
+    val updateButton: String? = null,
+    // Month names as they read after a day number ("19 декабря"). Only Russian
+    // declines them; where absent, `months` is used as it is.
+    val monthsGenitive: List<String>? = null
+) {
+    /** A day with its month: "19 декабря", "19 December". Mirrors iOS `UILabels.dayAndMonth`. */
+    fun dayAndMonth(day: Int, month: Int): String {
+        val name = (monthsGenitive ?: months).getOrNull(month - 1) ?: return "$day"
+        return "$day $name"
+    }
+}
 
 @Serializable
 data class ExtraFeast(

@@ -238,7 +238,7 @@ fun SaintSearchScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "${result.gregorianDay} ${localization.ui.months.getOrElse(result.gregorianMonth - 1) { "" }}",
+                                text = localization.ui.dayAndMonth(result.gregorianDay, result.gregorianMonth),
                                 fontSize = 12.sp,
                                 color = AppColors.mutedText
                             )

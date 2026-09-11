@@ -60,8 +60,7 @@ fun AddReminderScreen(
     var title by remember { mutableStateOf(defaultTitle) }
     var notes by remember { mutableStateOf("") }
 
-    val monthName = localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }
-    val formattedDate = "${day.gregorianDay} $monthName ${day.gregorianDate.take(4)}"
+    val formattedDate = "${localization.ui.dayAndMonth(day.gregorianDay, day.gregorianMonth)} ${day.gregorianDate.take(4)}"
 
     val addReminderTitle = when (language) {
         AppLanguage.SR -> "\u041F\u043E\u0434\u0441\u0435\u0442\u043D\u0438\u043A"

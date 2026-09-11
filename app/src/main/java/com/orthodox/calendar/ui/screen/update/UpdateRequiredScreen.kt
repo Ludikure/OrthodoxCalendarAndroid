@@ -53,7 +53,7 @@ fun UpdateRequiredScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "✝", fontSize = 40.sp, color = AppColors.crimson)
+        Text(text = "☦", fontSize = 40.sp, color = AppColors.crimson)
         Spacer(modifier = Modifier.height(20.dp))
         Text(text = "⬇", fontSize = 52.sp, color = AppColors.crimson)
         Spacer(modifier = Modifier.height(20.dp))

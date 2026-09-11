@@ -25,7 +25,7 @@ Any change here is applied to **both** apps in the same change-set.
    `ScriptureReading` / `Reflection` / `SaintBio`. Produced by the shared
    `build_database.py` pipeline.
 2. **Localization JSON schema** — `LocalizationBundle` / `UILabels` (incl. optional
-   `loadingLabel`, `offlineMessage`, `updateRequired*`, Bible-translation labels). The
+   `loadingLabel`, `offlineMessage`, `updateRequired*`, `monthsGenitive`, Bible-translation labels). The
    `sr/ru/en.json` files are byte-identical copies across the two repos, so a new key is
    a change to both models; screen-local strings stay inline per-language instead.
 6. **Saint-bio matching** — `engine/BioMatcher.kt` ↔ `Engine/BioMatcher.swift`, both

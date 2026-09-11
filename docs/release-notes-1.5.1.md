@@ -23,36 +23,37 @@ within it.
 ## English (en-US)
 
 ```
-• Saint lives now appear under the saint they belong to — many were paired with the wrong commemoration.
-• English (New Calendar) is corrected: feasts and fasts fall on their proper dates.
-• All years 2024–2099; 2025–2030 work fully offline.
-• Fixed fasting colours in the month grid, the "Great Feast" label appearing in Serbian, and a blank screen when opening a day from search.
-• The date picker now opens the day you tap.
-• The app no longer asks for calendar permissions.
+• Fasting follows each church's own calendar, day by day (SPC, Russian Church, ROCOR, OCA).
+• Saint lives appear under the right saint; saints and moving commemorations fall on their proper days every year, leap years included.
+• English (New Calendar): feasts and fasts on their proper dates.
+• All years 2024–2099; 2025–2030 work offline.
+• Fixed fasting colours, the "Great Feast" label and a blank screen from search.
+• The date picker opens the day you tap.
+• No calendar permission needed.
 ```
 
 ## Serbian (sr) — Cyrillic
 
 ```
-• Житија светих сада стоје уз правог свеца — многа су била уз погрешан спомен.
-• Исправљен енглески нови календар: празници и постови падају на тачне датуме.
-• Све године 2024–2099; године 2025–2030 раде потпуно офлајн.
-• Исправљене боје поста у мрежном приказу и празан екран при отварању дана из претраге.
-• Бирач датума сада отвара дан који додирнете.
+• Пост прати календар СПЦ дан по дан.
+• Житија стоје уз правог свеца; свеци, Задушнице, Детињци, Материце и Оци падају на прави дан сваке године, и у преступним.
+• Исправљен енглески нови календар: празници и постови на тачним датумима.
+• Све године 2024–2099; 2025–2030 раде офлајн.
+• Исправљене боје поста и празан екран при отварању дана из претраге.
+• Бирач датума отвара дан који додирнете.
 • Апликација више не тражи приступ календару.
-• Пост сада прати календар СПЦ дан по дан: строги дани на води, уље и риба где их Црква разрешава.
 ```
 
 ## Russian (ru)
 
 ```
-• Жития святых теперь стоят рядом со своим святым — многие были привязаны к чужой памяти.
-• Исправлен английский новый календарь: праздники и посты приходятся на верные даты.
-• Все годы с 2024 по 2099; годы 2025–2030 работают полностью офлайн.
-• Исправлены цвета поста в сетке месяца и пустой экран при открытии дня из поиска.
-• Выбор даты теперь открывает выбранный день.
-• Приложение больше не запрашивает доступ к календарю.
-• Усекновение, Воздвижение и Крещенский сочельник снова постные дни.
+• Пост следует календарю Русской Церкви день за днём.
+• Жития стоят у своего святого; святые и переходящие памяти приходятся на верный день каждого года, в том числе високосного.
+• Исправлен английский новый календарь: праздники и посты на верных датах.
+• Все годы 2024–2099; 2025–2030 работают офлайн.
+• Исправлены цвета поста и пустой экран при открытии дня из поиска.
+• Выбор даты открывает нужный день.
+• Приложение не запрашивает доступ к календарю.
 ```
 
 ---
@@ -85,6 +86,11 @@ Since 1.4.2, the last version production users have:
 - The fasting banner could show a day count from a season split across a year
   boundary.
 - Search no longer stutters while typing.
+- Russian dates used the heading form of the month after a day number — "19 Декабрь",
+  "2 Май". They read "19 декабря", "2 мая" now: the day header, search results,
+  reminders, shared text, the month grid's day card and the fasting banner
+  ("15 мар – 1 мая"). The genitive names are a new optional `monthsGenitive` key in
+  `ru.json`, shared with iOS.
 
 **Also fixed (second review pass)**
 - Scripture readings now name the service they belong to — Vespers, Matins, the
@@ -159,19 +165,41 @@ Since 1.4.2, the last version production users have:
   `BioMatcherTest`, `FastingStyleTest`, `ReadingLabelsTest` and `ScriptFoldingTest`
   were already here.
 
-**Fasting (bundled data regenerated)**
+**Fasting and saints (bundled data regenerated)**
 - Serbian fasting now follows the SPC's own calendar (pravoslavno.rs, "Календар
   поста") day by day. It used to relax almost every strict day to oil — a "bold"
   saint upgraded the day, and 341 of 365 days carry one — so Great Lent weekdays
   showed oil; ordinary Wednesdays and Fridays too. About 99 days a year change. The
   Beheading of St John, which showed fish (or no fast at all on most weekdays), is
   dry eating now.
-- The Beheading, the Exaltation of the Cross and Theophany Eve were no fast at all
-  on most weekdays in Russian and English: the rules could only relax a day,
-  never impose a fast. They are fast days again (2–3 days a year per locale).
+- Russian and English fasting follow the calendar each locale's saints come from:
+  Russian days.pravoslavie.ru, English holytrinityorthodox.com (ROCOR), English (New
+  Calendar) orthocal.info (the OCA). One shared set of rules served all three and
+  disagreed with each on about a fifth of its days — oil on every ordinary Wednesday
+  and Friday, where the Russian calendars allow fish in winter and the Paschal season
+  and the OCA keeps a strict fast; fish on Tuesdays and Thursdays late in the Nativity
+  Fast; one Great Lent for all three. The rules are now derived from each calendar
+  (iOS repo: `scripts/shared/derive_fasting.py`, checked in CI). A year left out of the
+  derivation is predicted at 95.9–98.6% (Russian), 96.4–99.7% (English) and 99.45–100%
+  (New Calendar). About 65–100 days a year change per locale.
+- The sentence under the Russian fasting level was days.pravoslavie.ru's 2026 text for
+  the same date, repeated in every year: it contradicted the level beside it on 239
+  days of 2027. It is the engine's own now.
+- Leap years: from February 29 to March 12 every day showed the previous church day's
+  saints and February 29 was blank (English New Calendar: February 16–28), and the
+  lives went with them. Saints are read by church date now, and St John Cassian has
+  his own February 29.
+- About a hundred commemorations the sources print on their 2026 date — Задушнице,
+  Детињци, Материце, Оци, Parents' Saturdays, the Sundays and Saturdays around the
+  great feasts, the Paschal leave-takings, regional synaxes kept on a Sunday — stayed
+  on that date in every year. They are placed by rules checked against the sources'
+  own other years; five that no source pins down are dropped rather than guessed.
+- Serbian month headings glued to the first saint of each month ("ФЕБРУАР – …") and
+  English service rubrics listed as saints are gone.
 - Dry eating was abbreviated "water" — the same as hot food without oil — in every
   language. It reads "суво" / "сухо" / "dry" now.
-- Only `fasting` changed in the data; saints, readings and bios are identical.
+- Readings and great feasts are unchanged, and the text pools hold the same entries
+  (now written in sorted order).
 
 **Fourth review pass — corrections before release** *(internal: none of this
 reached users, so none of it belongs in the store text)*

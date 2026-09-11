@@ -59,7 +59,8 @@ fun FastingPeriodBanner(
             // the data boundary would mislead); the "Day X of Y" suffix only when
             // it refers to today.
             if (period.complete) {
-                val range = FastingPeriods.dateRange(period, localization.ui.months)
+                // After a day number Russian takes the genitive: "15 мар – 1 мая".
+                val range = FastingPeriods.dateRange(period, localization.ui.monthsGenitive ?: localization.ui.months)
                 Text(
                     text = if (showsDayIndex) {
                         "$range  ·  ${FastingPeriods.dayLabel(language, period.dayIndex, period.total)}"

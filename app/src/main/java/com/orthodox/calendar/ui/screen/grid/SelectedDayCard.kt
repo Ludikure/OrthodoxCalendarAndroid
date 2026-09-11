@@ -49,7 +49,12 @@ fun SelectedDayCard(
         AppLanguage.EN, AppLanguage.EN_NC -> "GREAT FEAST"
     }
 
-    val monthName = localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }
+    // "1 апреля" in Russian; the other languages keep the ordinal dot ("1. Април").
+    val cardDate = if (language == AppLanguage.RU) {
+        localization.ui.dayAndMonth(day.gregorianDay, day.gregorianMonth)
+    } else {
+        "${day.gregorianDay}. ${localization.ui.months.getOrElse(day.gregorianMonth - 1) { "" }}"
+    }
 
     val cardBgModifier = when {
         isPascha -> Modifier.background(
@@ -95,7 +100,7 @@ fun SelectedDayCard(
             }
 
             Text(
-                text = "${day.gregorianDay}. $monthName \u2014 ${day.primaryFeast?.name ?: ""}",
+                text = "$cardDate \u2014 ${day.primaryFeast?.name ?: ""}",
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
