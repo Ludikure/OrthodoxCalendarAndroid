@@ -99,7 +99,7 @@ Port of iOS `BioMatcher.swift`, assigning the whole day at once — which feast 
 - Words match past inflection, spelling variants and typos (Вартоломеј/Вартоломеја, Тедот/Теодот) via shared prefixes and edit distance; a single substitution inside a short name (Матија/Марија) does not.
 - A bio whose title *is* a feast's name is paired with that feast first and never lands anywhere else; the rest go best-first, and a weak match is taken only when it is the sole remaining candidate. A wrong bio is worse than none.
 - Moveable feasts never get bios. `Feast.description` takes priority over bio text.
-- `scripts/shared/simulate_bio_matching.py` in the iOS repo is the reference implementation for all three ports. `BioMatcherTest` checks this one against `app/src/test/resources/bio_assignments_2026.tsv`, generated from it over the bundled calendars — regenerate the fixture when the rules or the bundled data change, never edit it to make a failure pass.
+- `scripts/shared/simulate_bio_matching.py` in the iOS repo is the reference implementation for all three ports. `BioMatcherTest` checks this one against `app/src/test/resources/bio_assignments_2026.tsv`, generated from it over the bundled calendars (`python3 scripts/shared/simulate_bio_matching.py --tsv=<this repo>/app/src/test/resources/bio_assignments_2026.tsv`, run in the iOS repo after regenerating its `data/output`) — regenerate the fixture when the rules or the bundled data change, never edit it to make a failure pass.
 
 ### Haptic Feedback
 `Haptics` utility uses `View.performHapticFeedback()` with sharp single-tick constants for responsiveness:
