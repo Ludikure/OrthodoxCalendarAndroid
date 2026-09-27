@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toDrawable
@@ -17,7 +20,11 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.orthodox.calendar.ui.theme.LocalIsDarkTheme
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.orthodox.calendar.app.ReviewPrompt
+import com.orthodox.calendar.ui.navigation.Routes
+import kotlinx.coroutines.delay
 import com.orthodox.calendar.ui.navigation.NavGraph
 import com.orthodox.calendar.ui.screen.update.UpdateRequiredScreen
 import com.orthodox.calendar.ui.theme.OrthodoxCalendarTheme
@@ -40,6 +47,8 @@ class MainActivity : ComponentActivity() {
             val uiState by viewModel.uiState.collectAsState()
             val navController = rememberNavController()
             val context = LocalContext.current
+            val reviewPrompt = remember { ReviewPrompt(context) }
+            var foregrounds by remember { mutableIntStateOf(0) }
 
             // Server-controlled minimum-version gate (fail-open).
             val mustUpdate by updateGate.mustUpdate.collectAsState()
@@ -54,6 +63,8 @@ class MainActivity : ComponentActivity() {
             // and the tick re-armed from the wall clock.
             LifecycleStartEffect(viewModel) {
                 viewModel.refreshToday()
+                reviewPrompt.recordActive()
+                foregrounds++
                 onStopOrDispose { }
             }
 
@@ -83,6 +94,17 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 } else {
+                    // The rating ask waits a moment after the calendar appears
+                    // and only fires there, never over a day being read; leaving
+                    // the calendar within the wait cancels it.
+                    val backStack by navController.currentBackStackEntryAsState()
+                    val onCalendar = backStack?.destination?.route == Routes.Calendar.route
+                    LaunchedEffect(foregrounds, onCalendar) {
+                        if (!onCalendar || !reviewPrompt.shouldPrompt) return@LaunchedEffect
+                        delay(2_000)
+                        reviewPrompt.request(this@MainActivity)
+                    }
+
                     NavGraph(
                         navController = navController,
                         viewModel = viewModel,
