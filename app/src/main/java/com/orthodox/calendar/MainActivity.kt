@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -29,8 +30,15 @@ import com.orthodox.calendar.ui.navigation.NavGraph
 import com.orthodox.calendar.ui.screen.update.UpdateRequiredScreen
 import com.orthodox.calendar.ui.theme.OrthodoxCalendarTheme
 import com.orthodox.calendar.ui.viewmodel.CalendarViewModel
+import com.orthodox.calendar.ui.util.toIsoDate
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
+    /** Widget taps (ACTION_OPEN_TODAY) not yet acted on, counted so a second tap
+     *  while the app is open opens today again. */
+    private val openTodayRequests = MutableStateFlow(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -41,6 +49,13 @@ class MainActivity : ComponentActivity() {
         // Process-scoped: remembering the gate in the composition let a rotation
         // clear a hard update block and refetch /api/config every time.
         val updateGate = app.updateGate
+        val slavaStore = app.slavaStore
+        val slavaReminders = app.slavaReminders
+        val widgetSync = app.widgetSync
+        // A restored activity has already acted on the tap that launched it.
+        if (savedInstanceState == null && intent?.action == ACTION_OPEN_TODAY) {
+            openTodayRequests.value++
+        }
 
         setContent {
             val viewModel: CalendarViewModel = viewModel()
@@ -55,6 +70,32 @@ class MainActivity : ComponentActivity() {
             val storeUrl by updateGate.storeUrl.collectAsState()
             LaunchedEffect(Unit) { updateGate.check() }
 
+            // Slava reminders exist only in Serbian: a language change schedules
+            // or clears them. The reschedule reads the persisted language itself,
+            // so the default this state starts with before preferences load
+            // cannot schedule anything the saved language would not.
+            LaunchedEffect(uiState.language) { slavaReminders.update() }
+
+            // The widgets' snapshot is rewritten at launch, on return to the
+            // foreground, on a language change and when the current year loads
+            // (slava changes reach it through the store). Always after the
+            // calendar's own load has finished: a local-only read of the same
+            // year racing it would decode the year and its text pool twice.
+            var widgetPending by remember { mutableStateOf(true) }
+            LaunchedEffect(uiState.language) { widgetPending = true }
+            val currentYearLoaded = !uiState.isLoading &&
+                uiState.loadedYear == LocalDate.now().year &&
+                uiState.loadedLocale == uiState.language.code
+            LaunchedEffect(currentYearLoaded) { if (currentYearLoaded) widgetPending = true }
+            val calendarSettled = !uiState.isLoading && uiState.localization != null &&
+                uiState.loadedLocale == uiState.language.code
+            LaunchedEffect(widgetPending, calendarSettled) {
+                if (widgetPending && calendarSettled) {
+                    widgetPending = false
+                    widgetSync.refresh(uiState.language)
+                }
+            }
+
             // Re-read the day whenever the activity comes back. The ViewModel's
             // midnight tick is a coroutine delay, and that runs on uptime, which
             // stops in deep sleep: a phone left overnight with the app open woke
@@ -64,8 +105,29 @@ class MainActivity : ComponentActivity() {
             LifecycleStartEffect(viewModel) {
                 viewModel.refreshToday()
                 reviewPrompt.recordActive()
+                // A reminder a year out is scheduled for its date; coming back
+                // to the app tops the alarms up with the next occurrence.
+                slavaReminders.update()
+                widgetPending = true
                 foregrounds++
                 onStopOrDispose { }
+            }
+
+            // A widget tap: the calendar on today, with today's detail open —
+            // once the splash has handed over to the calendar, so the detail is
+            // not buried under it. Mirrors iOS `CalendarViewModel.openToday()`.
+            val openToday by openTodayRequests.collectAsState()
+            var openedToday by remember { mutableIntStateOf(0) }
+            val currentEntry by navController.currentBackStackEntryAsState()
+            val route = currentEntry?.destination?.route
+            val navReady = route != null && route != Routes.Splash.route
+            LaunchedEffect(openToday, navReady) {
+                if (openToday <= openedToday || !navReady) return@LaunchedEffect
+                openedToday = openToday
+                viewModel.goToToday()
+                navController.navigate(Routes.DayDetail.createRoute(LocalDate.now().toIsoDate())) {
+                    popUpTo(Routes.Calendar.route)
+                }
             }
 
             OrthodoxCalendarTheme(appTheme = uiState.theme) {
@@ -109,11 +171,19 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         viewModel = viewModel,
                         repository = repository,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        slavaStore = slavaStore,
+                        onRescheduleSlava = { slavaReminders.update() }
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == ACTION_OPEN_TODAY) openTodayRequests.value++
     }
 
     /**
@@ -131,6 +201,9 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        /** Sent by the home-screen widgets: open the calendar on today's detail. */
+        const val ACTION_OPEN_TODAY = "com.orthodox.calendar.OPEN_TODAY"
+
         /**
          * In step with `AppColors.warmBg` in ui/theme/AppColors.kt and
          * `res/values/colors.xml` — three definitions because the window, the

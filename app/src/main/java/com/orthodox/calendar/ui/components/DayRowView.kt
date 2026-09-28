@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.data.slava.SlavaMark
 import com.orthodox.calendar.ui.util.fastingVisuals
 import com.orthodox.calendar.ui.theme.AppColors
 
@@ -36,8 +37,11 @@ fun DayRowView(
     isToday: Boolean,
     localization: LocalizationBundle,
     language: AppLanguage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The user's or a friend's slava on this day (Serbian only; null otherwise). */
+    slava: SlavaMark? = null
 ) {
+    val isMySlava = slava?.isMine == true
     val isGreatFeast = day.isGreatFeast
     val isRed = day.primaryFeast?.importance == "great"
     val isBold = day.primaryFeast?.importance.let { it == "bold" || it == "great" }
@@ -50,6 +54,7 @@ fun DayRowView(
 
     val rowBgModifier = when {
         isToday -> Modifier.background(AppColors.crimson.copy(alpha = 0.08f))
+        isMySlava -> Modifier.background(AppColors.slavaRowBg)
         isGreatFeast -> Modifier.background(
             Brush.horizontalGradient(
                 colors = listOf(Color(0xFFFFF8F0), Color(0xFFFCEBD1))
@@ -96,6 +101,13 @@ fun DayRowView(
                                 .clip(CircleShape)
                                 .background(AppColors.crimson)
                         )
+                    } else if (isMySlava) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(AppColors.gold)
+                        )
                     }
                     Text(
                         text = day.gregorianDay.toString(),
@@ -103,6 +115,7 @@ fun DayRowView(
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = if (isToday) Color.White
+                        else if (isMySlava) AppColors.slavaInk
                         else if (day.isSunday) AppColors.crimson
                         else AppColors.darkText
                     )
@@ -133,6 +146,15 @@ fun DayRowView(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                if (isMySlava) {
+                    Text(
+                        text = "🕯 ВАША СЛАВА",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.slavaGold,
+                        letterSpacing = 1.2.sp
+                    )
+                }
                 if (isGreatFeast) {
                     val greatFeastLabel = when (language) {
                         AppLanguage.SR -> "\u0412\u0435\u043B\u0438\u043A\u0438 \u043F\u0440\u0430\u0437\u043D\u0438\u043A"
@@ -172,6 +194,17 @@ fun DayRowView(
                         text = secondaryText,
                         fontSize = 12.sp,
                         color = AppColors.mutedText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Friends' slavas: "Андрејевдан · Петровићи"
+                slava?.friendLines?.forEach { line ->
+                    Text(
+                        text = "🕯 $line",
+                        fontSize = 12.sp,
+                        color = AppColors.slavaGold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

@@ -101,6 +101,13 @@ Port of iOS `BioMatcher.swift`, assigning the whole day at once — which feast 
 - Moveable feasts never get bios. `Feast.description` takes priority over bio text.
 - `scripts/shared/simulate_bio_matching.py` in the iOS repo is the reference implementation for all three ports. `BioMatcherTest` checks this one against `app/src/test/resources/bio_assignments_2026.tsv`, generated from it over the bundled calendars (`python3 scripts/shared/simulate_bio_matching.py --tsv=<this repo>/app/src/test/resources/bio_assignments_2026.tsv`, run in the iOS repo after regenerating its `data/output`) — regenerate the fixture when the rules or the bundled data change, never edit it to make a failure pass.
 
+### Home-screen widgets (widget/)
+Port of the iOS widgets (`OrthodoxCalendarWidget/`), built with Jetpack Glance. One `TodayWidget` offered at 2×2 and 4×2 (`TodayWidgetReceiver`, `TodayWideWidgetReceiver`); it picks the small or wide layout from its size.
+- The widget never opens a year file. `WidgetSync` (app side) writes `filesDir/widget_snapshot.json` — 21 days from today, already localized, same JSON shape as iOS `WidgetSnapshot` — when the current year loads, on language/slava change and on ON_START, then redraws. `MainActivity` only calls it once the calendar's own load has finished: a local-only read of the same year racing it would decode the year and its 17 MB text pool twice.
+- A snapshot that does not reach today shows "open the app", never another day. `WidgetMidnight` (inexact alarm) redraws at local midnight; clock/time-zone changes redraw at once; `updatePeriodMillis` is the fallback.
+- Tapping opens `MainActivity` with `ACTION_OPEN_TODAY`: calendar on today, today's detail on top.
+- The picker's label/description and preview (`layout/widget_preview_*.xml`, RemoteViews-safe views only) are Android resources — the one exception to "no string resources".
+
 ### Haptic Feedback
 `Haptics` utility uses `View.performHapticFeedback()` with sharp single-tick constants for responsiveness:
 - `light` (`KEYBOARD_TAP`) — Search, Settings, Share, date picker

@@ -28,8 +28,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -54,6 +69,16 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
 import com.orthodox.calendar.data.model.SaintBio
 import com.orthodox.calendar.engine.BioMatcher
+import com.orthodox.calendar.data.slava.SlavaCatalog
+import com.orthodox.calendar.data.slava.SlavaDay
+import com.orthodox.calendar.data.slava.SlavaMark
+import com.orthodox.calendar.data.slava.SlavaStore
+import com.orthodox.calendar.data.slava.SlavaText
+import com.orthodox.calendar.ui.util.Haptics
+import com.orthodox.calendar.ui.util.rememberNotificationPermissionRequest
+import com.orthodox.calendar.ui.util.toIsoDate
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 import com.orthodox.calendar.ui.util.fastingVisuals
 import com.orthodox.calendar.ui.theme.AppColors
 import java.util.Locale
@@ -68,10 +93,40 @@ fun DayDetailScreen(
     periodInfo: FastingPeriodInfo?,
     onBack: () -> Unit,
     onAddReminder: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The user's slava settings; marks and offers show only in Serbian. */
+    slavaStore: SlavaStore? = null,
+    /** Today as `yyyy-MM-dd`, from the ViewModel. */
+    today: String = LocalDate.now().toIsoDate(),
+    /** Called after a slava is set from a saint card, once notifications were asked for. */
+    onSlavaSet: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val isGreat = day.isGreatFeast
+    val slavaSettings = slavaStore?.settings?.collectAsState()?.value
+        ?.takeIf { language == AppLanguage.SR }
+    /** The slava just set from a saint card, shown in the undo toast. */
+    var justSetSlava by remember { mutableStateOf<SlavaDay?>(null) }
+    LaunchedEffect(justSetSlava) {
+        if (justSetSlava != null) {
+            delay(5_000)
+            justSetSlava = null
+        }
+    }
+    val askForNotifications = rememberNotificationPermissionRequest(onSlavaSet)
+    // A saint card offers "set as your slava" only on a slava feast, in Serbian,
+    // and only until the user has one — after that it never shows.
+    val slavaOffer: (Feast) -> SlavaDay? = { feast ->
+        if (slavaSettings == null || slavaSettings.mine != null) null
+        else SlavaCatalog.slava(feast, day)
+    }
+    val setSlava: (SlavaDay) -> Unit = { slava ->
+        Haptics.medium(view)
+        slavaStore?.update { it.copy(mine = slava) }
+        justSetSlava = slava
+        askForNotifications()
+    }
 
     val formattedDate = localization.ui.dayAndMonth(day.gregorianDay, day.gregorianMonth)
 
@@ -116,6 +171,7 @@ fun DayDetailScreen(
         },
         modifier = modifier
     ) { paddingValues ->
+      Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -130,6 +186,17 @@ fun DayDetailScreen(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
+                // The user's or a friends' slava on this day (Serbian only)
+                slavaSettings?.mark(day)?.let { mark ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SlavaSection(
+                        mark = mark,
+                        mine = slavaSettings.mine,
+                        isToday = day.gregorianDate == today,
+                        fastingType = day.fasting.type
+                    )
+                }
+
                 // Fasting section
                 Spacer(modifier = Modifier.height(16.dp))
                 FastingSection(day = day)
@@ -140,7 +207,9 @@ fun DayDetailScreen(
                     SaintsSection(
                         day = day,
                         localization = localization,
-                        language = language
+                        language = language,
+                        slavaOffer = slavaOffer,
+                        onSetSlava = setSlava
                     )
                     SectionDivider()
                 }
@@ -166,6 +235,141 @@ fun DayDetailScreen(
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
+
+        justSetSlava?.let { slava ->
+            SlavaToast(
+                slava = slava,
+                remindsWeekBefore = slavaSettings?.remindWeekBefore == true,
+                onUndo = {
+                    slavaStore?.update { it.copy(mine = null) }
+                    justSetSlava = null
+                }
+            )
+        }
+      }
+    }
+}
+
+// MARK: - Slava
+
+@Composable
+private fun SlavaSection(mark: SlavaMark, mine: SlavaDay?, isToday: Boolean, fastingType: String) {
+    Column {
+        if (mark.isMine && mine != null) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(AppColors.bannerBg, RoundedCornerShape(16.dp))
+                    .padding(18.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(AppColors.cardBg)
+                        .border(2.dp, AppColors.gold, CircleShape)
+                ) {
+                    Text(text = "🕯", fontSize = 26.sp)
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "ВАША СЛАВА",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = AppColors.slavaGold
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (isToday) "Срећна слава!" else mine.name,
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    color = AppColors.bannerTitle,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = mine.saint,
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 15.sp,
+                    color = AppColors.bodyText,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = SlavaText.table(fastingType),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.darkText,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        mark.friendLines.forEachIndexed { index, line ->
+            if (index > 0 || mark.isMine) Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .background(AppColors.slavaRowBg, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(text = "🕯")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Слава: $line",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.slavaGold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.SlavaToast(slava: SlavaDay, remindsWeekBefore: Boolean, onUndo: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 12.dp)
+            .fillMaxWidth()
+            .shadow(12.dp, RoundedCornerShape(16.dp))
+            .background(AppColors.slavaInk, RoundedCornerShape(16.dp))
+            .padding(start = 16.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
+    ) {
+        Text(text = "🕯")
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${slava.name} је ваша слава",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.toastText
+            )
+            Text(
+                text = if (remindsWeekBefore) "Подсетник стиже недељу дана пре" else "Видећете је у календару",
+                fontSize = 12.sp,
+                color = AppColors.toastText.copy(alpha = 0.75f)
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Поништи",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.toastText,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.12f))
+                .clickable(onClick = onUndo)
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+        )
     }
 }
 
@@ -325,7 +529,9 @@ private fun FastingSection(day: CalendarDay) {
 private fun SaintsSection(
     day: CalendarDay,
     localization: LocalizationBundle,
-    language: AppLanguage
+    language: AppLanguage,
+    slavaOffer: (Feast) -> SlavaDay? = { null },
+    onSetSlava: (SlavaDay) -> Unit = {}
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -358,7 +564,8 @@ private fun SaintsSection(
             SaintCard(
                 feast = feast,
                 bio = assigned[index]?.let { bios.getOrNull(it) },
-                localizedType = localizedSaintType(feast.type, language)
+                localizedType = localizedSaintType(feast.type, language),
+                slavaAction = slavaOffer(feast)?.let { slava -> { onSetSlava(slava) } }
             )
             if (index < day.feasts.size - 1) {
                 Spacer(modifier = Modifier.height(8.dp))

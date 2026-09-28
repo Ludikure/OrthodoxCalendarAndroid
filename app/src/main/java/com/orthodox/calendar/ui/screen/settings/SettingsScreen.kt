@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,7 +51,10 @@ fun SettingsScreen(
     onBibleTranslationChanged: (BibleTranslation) -> Unit,
     onAboutClick: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The chosen slava's name, shown beside "Моја слава" (Serbian only). */
+    slavaName: String? = null,
+    onSlavaClick: () -> Unit = {}
 ) {
     val aboutLabel = when (language) {
         AppLanguage.SR -> "\u041E \u0430\u043F\u043B\u0438\u043A\u0430\u0446\u0438\u0458\u0438"
@@ -155,6 +161,39 @@ fun SettingsScreen(
                     color = AppColors.mutedText,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+            }
+
+            // Krsna slava is a Serbian custom, so only the Serbian calendar offers it.
+            if (language == AppLanguage.SR) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSlavaClick() }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🕯 Моја слава",
+                        fontSize = 16.sp,
+                        color = AppColors.darkText
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = slavaName.orEmpty(),
+                        fontSize = 16.sp,
+                        color = AppColors.mutedText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "  \u203A",
+                        fontSize = 20.sp,
+                        color = AppColors.mutedText
+                    )
+                }
             }
 
             HorizontalDivider()

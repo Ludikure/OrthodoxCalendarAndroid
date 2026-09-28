@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Orthodox Calendar</string>
+
+    <!-- The widget picker reads these from resources, so they are the one place
+         the app's text follows the device language rather than the in-app
+         setting. The widget itself draws in the app's language (WidgetStrings). -->
+    <string name="widget_label">Today</string>
+    <string name="widget_wide_label">Today · wide</string>
+    <string name="widget_description">Today\'s saints and fasting.</string>
+
+    <!-- Preview sample (layout/widget_preview_*.xml). -->
+    <string name="widget_sample_weekday">SATURDAY</string>
+    <string name="widget_sample_date">19 December</string>
+    <string name="widget_sample_primary">St Nicholas the Wonderworker, Archbishop of Myra</string>
+    <string name="widget_sample_secondary">Martyr Anthony of Vilnius; St Maximus, Metropolitan of Kiev</string>
+    <string name="widget_sample_badge">fish</string>
+    <string name="widget_sample_fasting">Fish allowed</string>
+    <!-- Slava is Serbian only: elsewhere the preview leaves the line empty. -->
+    <string name="widget_sample_slava" translatable="false"></string>
 </resources>

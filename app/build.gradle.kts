@@ -90,6 +90,9 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("com.google.android.play:review-ktx:2.0.2")
+    // Home-screen widgets (widget/). Glance 1.2 builds against this Compose BOM
+    // and Kotlin 2.1.
+    implementation("androidx.glance:glance-appwidget:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

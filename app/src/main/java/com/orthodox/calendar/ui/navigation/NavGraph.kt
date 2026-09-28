@@ -40,6 +40,8 @@ import com.orthodox.calendar.ui.screen.detail.DayDetailScreen
 import com.orthodox.calendar.ui.screen.reminder.AddReminderScreen
 import com.orthodox.calendar.ui.screen.search.SaintSearchScreen
 import com.orthodox.calendar.ui.screen.settings.SettingsScreen
+import com.orthodox.calendar.ui.screen.settings.SlavaSettingsScreen
+import com.orthodox.calendar.data.slava.SlavaStore
 import com.orthodox.calendar.ui.screen.splash.SplashScreen
 import com.orthodox.calendar.ui.screens.CalendarTabScreen
 import com.orthodox.calendar.ui.viewmodel.CalendarUiState
@@ -52,7 +54,10 @@ fun NavGraph(
     navController: NavHostController,
     viewModel: CalendarViewModel,
     repository: CalendarRepository,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    slavaStore: SlavaStore? = null,
+    /** Reschedules the slava reminders (after notifications were asked for). */
+    onRescheduleSlava: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val localization = uiState.localization
@@ -87,7 +92,8 @@ fun NavGraph(
                 },
                 onSettingsClick = {
                     navController.navigate(Routes.Settings.route)
-                }
+                },
+                slavaStore = slavaStore
             )
         }
 
@@ -127,7 +133,10 @@ fun NavGraph(
                             onBack = { navController.popBackStack() },
                             onAddReminder = {
                                 navController.navigate("reminder/$gregorianDate")
-                            }
+                            },
+                            slavaStore = slavaStore,
+                            today = uiState.today,
+                            onSlavaSet = onRescheduleSlava
                         )
                     }
                 }
@@ -200,7 +209,21 @@ fun NavGraph(
                     onThemeChanged = { theme -> viewModel.setTheme(theme) },
                     onBibleTranslationChanged = { t -> viewModel.setBibleTranslation(t) },
                     onAboutClick = { navController.navigate(Routes.About.route) },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    slavaName = slavaStore?.settings?.collectAsState()?.value?.mine?.name,
+                    onSlavaClick = { navController.navigate(Routes.SlavaSettings.route) }
+                )
+            }
+        }
+
+        composable(Routes.SlavaSettings.route) {
+            if (localization != null && slavaStore != null) {
+                SlavaSettingsScreen(
+                    store = slavaStore,
+                    years = repository,
+                    localization = localization,
+                    onBack = { navController.popBackStack() },
+                    onNotificationsAsked = onRescheduleSlava
                 )
             }
         }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Сегодня</string>
+    <string name="widget_wide_label">Сегодня · широкий</string>
+    <string name="widget_description">Святые дня и пост.</string>
+
+    <string name="widget_sample_weekday">СУББОТА</string>
+    <string name="widget_sample_date">19 декабря</string>
+    <string name="widget_sample_primary">Святитель Николай, архиепископ Мир Ликийских, чудотворец</string>
+    <string name="widget_sample_secondary">Мученик Антоний Виленский; святитель Максим, митрополит Киевский</string>
+    <string name="widget_sample_badge">рыба</string>
+    <string name="widget_sample_fasting">Рыба разрешена</string>
+</resources>

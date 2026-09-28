@@ -3,4 +3,11 @@
     <!-- Dark counterpart of values/colors.xml; mirrors the dark branch of
          AppColors.warmBg in ui/theme/AppColors.kt. -->
     <color name="window_background">#FF1C1A17</color>
+
+    <color name="widget_bg">#FF1C1A17</color>
+    <color name="widget_muted">#FF998C7A</color>
+    <color name="widget_dark_text">#FFE6DED1</color>
+    <color name="widget_gold_accent">#FFD1BD94</color>
+    <color name="widget_slava_gold">#FFD9B95A</color>
+    <color name="widget_fish_bg">#FF1A3326</color>
 </resources>

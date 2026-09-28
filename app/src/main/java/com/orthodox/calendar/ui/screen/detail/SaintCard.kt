@@ -4,6 +4,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +42,10 @@ fun SaintCard(
     feast: Feast,
     bio: SaintBio?,
     localizedType: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Set on a slava feast while the user has no slava: shows the
+     *  "Поставите као своју славу" pill under the name. */
+    slavaAction: (() -> Unit)? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -138,6 +142,23 @@ fun SaintCard(
                         modifier = Modifier.padding(top = 10.dp)
                     )
                 }
+            }
+
+            slavaAction?.let { action ->
+                Text(
+                    text = "🕯 Поставите као своју славу",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.slavaGold,
+                    modifier = Modifier
+                        // Lined up under the name, past the 36 dp icon and its spacing.
+                        .padding(start = 60.dp, bottom = 10.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(AppColors.slavaRowBg)
+                        .border(1.dp, AppColors.gold.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        .clickable(onClick = action)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
             }
 
             // Expandable content

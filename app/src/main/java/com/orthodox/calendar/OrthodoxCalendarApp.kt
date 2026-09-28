@@ -3,8 +3,11 @@ package com.orthodox.calendar
 import android.app.Application
 import android.content.ComponentCallbacks2
 import com.orthodox.calendar.app.AppUpdateGate
+import com.orthodox.calendar.app.SlavaReminders
 import com.orthodox.calendar.app.shouldReleaseCalendarCache
 import com.orthodox.calendar.data.repository.CalendarRepository
+import com.orthodox.calendar.data.slava.SlavaStore
+import com.orthodox.calendar.widget.WidgetSync
 
 class OrthodoxCalendarApp : Application() {
     /**
@@ -33,6 +36,34 @@ class OrthodoxCalendarApp : Application() {
      * Process-scoped, the gate is asked once and its answer sticks.
      */
     val updateGate: AppUpdateGate by lazy { AppUpdateGate() }
+
+    /**
+     * The user's krsna slava and friends' slavas (Serbian only), and the
+     * reminders scheduled from them. Process-scoped like the repository: the
+     * reminder and boot receivers reach them without an Activity. Every change
+     * to the settings reschedules the reminders.
+     */
+    val slavaStore: SlavaStore by lazy {
+        SlavaStore(this).also { store ->
+            store.onChange = {
+                slavaReminders.update()
+                // The wide widget counts down to the user's slava.
+                widgetSync.refresh()
+            }
+        }
+    }
+
+    val slavaReminders: SlavaReminders by lazy {
+        // The repository is handed over as a provider so a reschedule that
+        // needs no table line never builds it.
+        SlavaReminders(this, slavaStore, { repository })
+    }
+
+    /**
+     * Writes the home-screen widgets' snapshot (widget/WidgetSync.kt). The
+     * repository is handed over as a provider, as for the reminders.
+     */
+    val widgetSync: WidgetSync by lazy { WidgetSync(this, slavaStore, { repository }) }
 
     /**
      * The repository is process-scoped — that is the point of it — so nothing

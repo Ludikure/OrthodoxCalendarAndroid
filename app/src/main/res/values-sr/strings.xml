@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Данас</string>
+    <string name="widget_wide_label">Данас · широки</string>
+    <string name="widget_description">Данашњи светитељи и пост.</string>
+
+    <string name="widget_sample_weekday">СУБОТА</string>
+    <string name="widget_sample_date">19 Децембар</string>
+    <string name="widget_sample_primary">Свети Николај Мирликијски Чудотворац</string>
+    <string name="widget_sample_secondary">Преподобни Никола Суворов</string>
+    <string name="widget_sample_badge">риба</string>
+    <string name="widget_sample_fasting">Риба дозвољена</string>
+    <string name="widget_sample_slava">🕯 Никољдан · Срећна слава!</string>
+</resources>

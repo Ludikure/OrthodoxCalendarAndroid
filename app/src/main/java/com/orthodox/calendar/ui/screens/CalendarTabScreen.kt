@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.ui.components.CalendarLoadFailureView
 import com.orthodox.calendar.ui.components.CalendarTitle
-import com.orthodox.calendar.ui.components.FastingPeriodBanner
+import com.orthodox.calendar.ui.components.SeasonBanner
 import com.orthodox.calendar.ui.components.MonthHeaderBar
 import com.orthodox.calendar.ui.components.MonthListScreen
 import com.orthodox.calendar.ui.screen.datepicker.DatePickerSheet
@@ -45,6 +45,12 @@ import com.orthodox.calendar.ui.components.defaultNoDataMessage
 import com.orthodox.calendar.ui.components.defaultOfflineMessage
 import com.orthodox.calendar.ui.components.defaultRetryLabel
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.util.parseIsoDate
+import com.orthodox.calendar.ui.util.toIsoDate
+import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.data.slava.SlavaCountdown
+import com.orthodox.calendar.data.slava.SlavaSettings
+import com.orthodox.calendar.data.slava.SlavaStore
 import java.util.Locale
 import com.orthodox.calendar.ui.viewmodel.CalendarViewModel
 import com.orthodox.calendar.ui.viewmodel.ViewMode
@@ -58,9 +64,13 @@ fun CalendarTabScreen(
     onDayClick: (com.orthodox.calendar.data.model.CalendarDay) -> Unit = {},
     onDateClick: (String) -> Unit = {},
     onSearchClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    slavaStore: SlavaStore? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val slavaSettings = slavaStore?.settings?.collectAsState()?.value
+    // Slava is a Serbian custom: no marks, banner row or reminders elsewhere.
+    val slava = slavaSettings.takeIf { uiState.language == AppLanguage.SR }
     val localization = uiState.localization ?: return
     val view = LocalView.current
 
@@ -148,15 +158,27 @@ fun CalendarTabScreen(
             uiState.daysInMonth.firstOrNull { uiState.fastingPeriods.containsKey(it.gregorianDate) }
                 ?.gregorianDate
         }
-        focalDate?.let { uiState.fastingPeriods[it] }?.let { period ->
-            FastingPeriodBanner(
+        val period = focalDate?.let { uiState.fastingPeriods[it] }
+        val countdown = slavaCountdown(slava, today, uiState.currentMonth, uiState.currentYear)
+        // Season banner when the viewed month touches a fasting season or the
+        // user's slava is near (see slavaCountdown).
+        if (period != null || countdown != null) {
+            SeasonBanner(
                 period = period,
                 localization = localization,
                 language = uiState.language,
                 // `complete` is false when the run touches the edge of the loaded
                 // data — a fast crossing a year boundary looks like two short
                 // ones there, so its day index would be wrong rather than absent.
-                showsDayIndex = todayInView && period.complete
+                showsDayIndex = todayInView && period?.complete == true,
+                slava = countdown,
+                onSlavaTap = {
+                    countdown?.let {
+                        Haptics.light(view)
+                        viewModel.goToMonth(it.date.monthValue, it.date.year)
+                        onDateClick(it.date.toIsoDate())
+                    }
+                }
             )
         }
 
@@ -205,6 +227,7 @@ fun CalendarTabScreen(
                         loadedContentKey = uiState.loadedContentKey,
                         today = uiState.today,
                         scrollToTodayTrigger = uiState.scrollToTodayTrigger,
+                        slava = slava,
                         onDayClick = onDayClick
                     )
                 }
@@ -253,6 +276,25 @@ fun CalendarTabScreen(
             )
         }
     }
+}
+
+/**
+ * The countdown row for the banner: from 30 days before the user's slava, and
+ * only while the month on screen holds today or the slava itself — browsing
+ * March in December shouldn't count down to Nikoljdan. Null [settings] means
+ * not Serbian. Mirror of `CalendarTabView.slavaCountdown` in the iOS repo.
+ */
+internal fun slavaCountdown(
+    settings: SlavaSettings?,
+    today: String,
+    month: Int,
+    year: Int
+): SlavaCountdown? {
+    val now = parseIsoDate(today) ?: return null
+    val next = settings?.countdown(now) ?: return null
+    if (next.days > SlavaStore.BANNER_DAYS) return null
+    fun shown(d: java.time.LocalDate) = d.year == year && d.monthValue == month
+    return next.takeIf { shown(now) || shown(it.date) }
 }
 
 private fun defaultSearchLabel(language: com.orthodox.calendar.data.model.AppLanguage): String =

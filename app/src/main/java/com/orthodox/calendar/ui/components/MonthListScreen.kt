@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.data.slava.SlavaSettings
 import com.orthodox.calendar.ui.theme.AppColors
 @Composable
 fun MonthListScreen(
@@ -30,6 +31,8 @@ fun MonthListScreen(
     today: String,
     scrollToTodayTrigger: Boolean,
     modifier: Modifier = Modifier,
+    /** The slava settings to mark rows with, or null outside Serbian. */
+    slava: SlavaSettings? = null,
     onDayClick: (CalendarDay) -> Unit = {}
 ) {
     val todayString = today
@@ -69,7 +72,8 @@ fun MonthListScreen(
                     day = day,
                     isToday = day.gregorianDate == todayString,
                     localization = localization,
-                    language = language
+                    language = language,
+                    slava = slava?.mark(day)
                 )
             }
 

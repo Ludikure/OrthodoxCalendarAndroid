@@ -86,4 +86,28 @@ object AppColors {
     val fastFreeBg: Color
         @Composable get() = if (LocalIsDarkTheme.current)
             Color(0xFF24381F) else Color(0xFFEDF8EA)
+
+    // Slava (Serbian krsna slava markers and banner row). Mirror of the iOS
+    // AppColors slava block.
+
+    /** Text and icons for slava labels: a dark gold that stays readable on the
+     *  cream row and the wheat banner. */
+    val slavaGold: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFFD9B95A) else Color(0xFF8A6A12)
+
+    /** Background of the row on the user's own slava. */
+    val slavaRowBg: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFF302918) else Color(0xFFFBF3DC)
+
+    /** The rule between the fasting season and the slava row in the banner. */
+    val bannerDivider: Color
+        @Composable get() = if (LocalIsDarkTheme.current)
+            Color(0xFF594C33) else Color(0xFFD8C796)
+
+    /** Day number on the gold slava circle, and the undo toast's background. */
+    val slavaInk = Color(0xFF2C2418)
+    /** Text on the undo toast. */
+    val toastText = Color(0xFFF3ECDD)
 }

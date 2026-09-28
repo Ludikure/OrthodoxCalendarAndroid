@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A candle for slava reminders; the status bar draws it as a white silhouette. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Flame -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2C12,2 9.5,4.8 9.5,6.6C9.5,8 10.6,9 12,9C13.4,9 14.5,8 14.5,6.6C14.5,4.8 12,2 12,2Z" />
+    <!-- Candle body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10,10.5h4v9.5h-4z" />
+    <!-- Holder -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6.5,20.5h11v1.5h-11z" />
+</vector>
