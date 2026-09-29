@@ -1,6 +1,7 @@
 package com.orthodox.calendar.ui.screen.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,11 +31,18 @@ fun LanguagePicker(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = lang.displayName,
-                fontSize = 16.sp,
-                color = AppColors.darkText
-            )
+            Column {
+                Text(
+                    text = lang.displayName,
+                    fontSize = 16.sp,
+                    color = AppColors.darkText
+                )
+                Text(
+                    text = lang.churchName,
+                    fontSize = 12.sp,
+                    color = AppColors.mutedText
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             RadioButton(
                 selected = selectedLanguage == lang,

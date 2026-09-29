@@ -27,7 +27,7 @@ fun CalendarTitle(
     val subtitle = when (language) {
         AppLanguage.SR -> "\u0421\u0440\u043F\u0441\u043A\u0430 \u041F\u0440\u0430\u0432\u043E\u0441\u043B\u0430\u0432\u043D\u0430 \u0426\u0440\u043A\u0432\u0430"
         AppLanguage.RU -> "\u0420\u0443\u0441\u0441\u043A\u0430\u044F \u041F\u0440\u0430\u0432\u043E\u0441\u043B\u0430\u0432\u043D\u0430\u044F \u0426\u0435\u0440\u043A\u043E\u0432\u044C"
-        AppLanguage.EN, AppLanguage.EN_NC -> "Orthodox Church Calendar"
+        AppLanguage.EN, AppLanguage.EN_NC -> language.churchName
     }
 
     Column(

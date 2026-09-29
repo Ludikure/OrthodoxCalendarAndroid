@@ -10,8 +10,21 @@ enum class AppLanguage(val code: String) {
         get() = when (this) {
             SR -> "Српски"
             RU -> "Русский"
-            EN -> "English (Old Calendar)"
-            EN_NC -> "English (New Calendar)"
+            EN, EN_NC -> "English"
+        }
+
+    /**
+     * Whose calendar each option follows, under its name in the picker and
+     * under the app title. Two English calendars already exist and a Greek
+     * one may follow, so the language alone no longer says which it is.
+     * Mirror of AppLanguage.churchName on iOS.
+     */
+    val churchName: String
+        get() = when (this) {
+            SR -> "Српска Православна Црква (СПЦ)"
+            RU -> "Русская Православная Церковь (РПЦ)"
+            EN -> "ROCOR · Old Calendar"
+            EN_NC -> "OCA · New Calendar"
         }
 
     /** The localization file to load (en_nc shares en.json) */
