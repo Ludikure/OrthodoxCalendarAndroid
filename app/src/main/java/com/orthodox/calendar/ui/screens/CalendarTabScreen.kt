@@ -48,6 +48,8 @@ import com.orthodox.calendar.ui.theme.AppColors
 import com.orthodox.calendar.ui.util.parseIsoDate
 import com.orthodox.calendar.ui.util.toIsoDate
 import com.orthodox.calendar.data.model.AppLanguage
+import com.orthodox.calendar.data.nameday.NameDaySettings
+import com.orthodox.calendar.data.nameday.NameDayStore
 import com.orthodox.calendar.data.slava.SlavaCountdown
 import com.orthodox.calendar.data.slava.SlavaSettings
 import com.orthodox.calendar.data.slava.SlavaStore
@@ -65,12 +67,16 @@ fun CalendarTabScreen(
     onDateClick: (String) -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    slavaStore: SlavaStore? = null
+    slavaStore: SlavaStore? = null,
+    nameDayStore: NameDayStore? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val slavaSettings = slavaStore?.settings?.collectAsState()?.value
     // Slava is a Serbian custom: no marks, banner row or reminders elsewhere.
     val slava = slavaSettings.takeIf { uiState.language == AppLanguage.SR }
+    // Name days are kept in the Russian calendar only, the same way.
+    val nameDays = nameDayStore?.settings?.collectAsState()?.value
+        .takeIf { uiState.language == AppLanguage.RU }
     val localization = uiState.localization ?: return
     val view = LocalView.current
 
@@ -160,6 +166,7 @@ fun CalendarTabScreen(
         }
         val period = focalDate?.let { uiState.fastingPeriods[it] }
         val countdown = slavaCountdown(slava, today, uiState.currentMonth, uiState.currentYear)
+            ?: nameDayCountdown(nameDays, today, uiState.currentMonth, uiState.currentYear)
         // Season banner when the viewed month touches a fasting season or the
         // user's slava is near (see slavaCountdown).
         if (period != null || countdown != null) {
@@ -228,6 +235,7 @@ fun CalendarTabScreen(
                         today = uiState.today,
                         scrollToTodayTrigger = uiState.scrollToTodayTrigger,
                         slava = slava,
+                        nameDays = nameDays,
                         onDayClick = onDayClick
                     )
                 }
@@ -295,6 +303,25 @@ internal fun slavaCountdown(
     if (next.days > SlavaStore.BANNER_DAYS) return null
     fun shown(d: java.time.LocalDate) = d.year == year && d.monthValue == month
     return next.takeIf { shown(now) || shown(it.date) }
+}
+
+/**
+ * The same row for the user's name day: Russian only (null [settings]
+ * otherwise), the same 30 days and the same rule about the month on screen.
+ * Mirror of `CalendarTabView.nameDayCountdown` in the iOS repo.
+ */
+internal fun nameDayCountdown(
+    settings: NameDaySettings?,
+    today: String,
+    month: Int,
+    year: Int
+): SlavaCountdown? {
+    val now = parseIsoDate(today) ?: return null
+    val next = settings?.countdown(now) ?: return null
+    if (next.days > NameDayStore.BANNER_DAYS) return null
+    fun shown(d: java.time.LocalDate) = d.year == year && d.monthValue == month
+    if (!shown(now) && !shown(next.date)) return null
+    return SlavaCountdown(next.nameDay.churchName, next.date, next.days, SlavaCountdown.Kind.NAME_DAY)
 }
 
 private fun defaultSearchLabel(language: com.orthodox.calendar.data.model.AppLanguage): String =

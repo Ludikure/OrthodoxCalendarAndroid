@@ -24,6 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.orthodox.calendar.app.ReviewPrompt
+import com.orthodox.calendar.data.model.AppLanguage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.orthodox.calendar.ui.navigation.Routes
 import kotlinx.coroutines.delay
 import com.orthodox.calendar.ui.navigation.NavGraph
@@ -51,6 +54,8 @@ class MainActivity : ComponentActivity() {
         val updateGate = app.updateGate
         val slavaStore = app.slavaStore
         val slavaReminders = app.slavaReminders
+        val nameDayStore = app.nameDayStore
+        val nameDayReminders = app.nameDayReminders
         val widgetSync = app.widgetSync
         // A restored activity has already acted on the tap that launched it.
         if (savedInstanceState == null && intent?.action == ACTION_OPEN_TODAY) {
@@ -75,6 +80,15 @@ class MainActivity : ComponentActivity() {
             // so the default this state starts with before preferences load
             // cannot schedule anything the saved language would not.
             LaunchedEffect(uiState.language) { slavaReminders.update() }
+            // Name days are the Russian counterpart, scheduled the same way. Their
+            // catalog (imeniny_ru.json) is read off the main thread before a day's
+            // detail or Мои именины first needs it.
+            LaunchedEffect(uiState.language) {
+                nameDayReminders.update()
+                if (uiState.language == AppLanguage.RU) {
+                    withContext(Dispatchers.Default) { app.nameDayCatalog }
+                }
+            }
 
             // The widgets' snapshot is rewritten at launch, on return to the
             // foreground, on a language change and when the current year loads
@@ -108,6 +122,7 @@ class MainActivity : ComponentActivity() {
                 // A reminder a year out is scheduled for its date; coming back
                 // to the app tops the alarms up with the next occurrence.
                 slavaReminders.update()
+                nameDayReminders.update()
                 widgetPending = true
                 foregrounds++
                 onStopOrDispose { }
@@ -173,7 +188,9 @@ class MainActivity : ComponentActivity() {
                         repository = repository,
                         modifier = Modifier.fillMaxSize(),
                         slavaStore = slavaStore,
-                        onRescheduleSlava = { slavaReminders.update() }
+                        onRescheduleSlava = { slavaReminders.update() },
+                        nameDayStore = nameDayStore,
+                        onRescheduleNameDays = { nameDayReminders.update() }
                     )
                 }
             }

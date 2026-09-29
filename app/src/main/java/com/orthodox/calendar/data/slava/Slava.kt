@@ -103,14 +103,19 @@ data class SlavaMark(
     val isEmpty: Boolean get() = !isMine && friendLines.isEmpty()
 }
 
-/** The user's next slava as the banner shows it. */
+/**
+ * The user's next slava — or, in Russian, name day (`NameDayCountdown`) — as
+ * the banner shows it. Mirror of iOS `SlavaCountdown`, which carries the same
+ * [kind].
+ */
 data class SlavaCountdown(
-    val slava: SlavaDay,
+    val name: String,
     val date: LocalDate,
     /** 0 = today. */
-    val days: Int
+    val days: Int,
+    val kind: Kind = Kind.SLAVA
 ) {
-    val name: String get() = slava.name
+    enum class Kind { SLAVA, NAME_DAY }
 }
 
 /**
@@ -138,7 +143,7 @@ data class SlavaSettings(
     fun countdown(today: LocalDate): SlavaCountdown? {
         val slava = mine ?: return null
         val date = slava.nextOccurrence(today) ?: return null
-        return SlavaCountdown(slava, date, ChronoUnit.DAYS.between(today, date).toInt())
+        return SlavaCountdown(slava.name, date, ChronoUnit.DAYS.between(today, date).toInt())
     }
 }
 

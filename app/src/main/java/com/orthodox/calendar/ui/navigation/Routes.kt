@@ -10,4 +10,5 @@ sealed class Routes(val route: String) {
     data object Settings : Routes("settings")
     data object About : Routes("about")
     data object SlavaSettings : Routes("slava_settings")
+    data object NameDaySettings : Routes("name_day_settings")
 }

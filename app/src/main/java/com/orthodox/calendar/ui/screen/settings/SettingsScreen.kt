@@ -38,6 +38,8 @@ import com.orthodox.calendar.data.model.AppTheme
 import com.orthodox.calendar.data.model.BibleTranslation
 import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.ui.theme.AppColors
+import com.orthodox.calendar.ui.components.NameDayIcon
+import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +56,10 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     /** The chosen slava's name, shown beside "Моја слава" (Serbian only). */
     slavaName: String? = null,
-    onSlavaClick: () -> Unit = {}
+    onSlavaClick: () -> Unit = {},
+    /** The user's next name day ("25 января"), shown beside "Мои именины" (Russian only). */
+    nameDayDate: String? = null,
+    onNameDayClick: () -> Unit = {}
 ) {
     val aboutLabel = when (language) {
         AppLanguage.SR -> "\u041E \u0430\u043F\u043B\u0438\u043A\u0430\u0446\u0438\u0458\u0438"
@@ -181,6 +186,41 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = slavaName.orEmpty(),
+                        fontSize = 16.sp,
+                        color = AppColors.mutedText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "  \u203A",
+                        fontSize = 20.sp,
+                        color = AppColors.mutedText
+                    )
+                }
+            }
+
+            // Name days (именины) are kept in the Russian calendar only.
+            if (language == AppLanguage.RU) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNameDayClick() }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NameDayIcon(Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Мои именины",
+                        fontSize = 16.sp,
+                        color = AppColors.darkText
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = nameDayDate.orEmpty(),
                         fontSize = 16.sp,
                         color = AppColors.mutedText,
                         maxLines = 1,

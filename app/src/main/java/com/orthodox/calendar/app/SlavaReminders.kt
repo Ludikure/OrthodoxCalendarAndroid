@@ -203,23 +203,30 @@ class SlavaReminders(
     }
 }
 
-/** Posts a slava reminder when its alarm fires. */
+/** Posts a slava — or a name-day ([NameDayReminders]) — reminder when its alarm fires. */
 class SlavaReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != SlavaReminders.ACTION_FIRE) return
+        val nameDay = intent.action == NameDayReminders.ACTION_FIRE
+        if (intent.action != SlavaReminders.ACTION_FIRE && !nameDay) return
         val title = intent.getStringExtra(SlavaReminders.EXTRA_TITLE) ?: return
         val body = intent.getStringExtra(SlavaReminders.EXTRA_BODY).orEmpty()
         val id = intent.getIntExtra(SlavaReminders.EXTRA_ID, 0)
 
-        SlavaReminders.ensureChannel(context)
+        val channel = if (nameDay) {
+            NameDayReminders.ensureChannel(context)
+            NameDayReminders.CHANNEL_ID
+        } else {
+            SlavaReminders.ensureChannel(context)
+            SlavaReminders.CHANNEL_ID
+        }
         val open = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(context, SlavaReminders.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_slava)
+        val notification = NotificationCompat.Builder(context, channel)
+            .setSmallIcon(if (nameDay) R.drawable.ic_notification_name_day else R.drawable.ic_notification_slava)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -233,7 +240,7 @@ class SlavaReminderReceiver : BroadcastReceiver() {
 
 /**
  * Alarms do not survive a reboot, an app update or a clock change; each of those
- * schedules the reminders again.
+ * schedules the reminders again — slava and name-day alike.
  */
 class SlavaRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -246,6 +253,8 @@ class SlavaRescheduleReceiver : BroadcastReceiver() {
         }
         val app = context.applicationContext as? OrthodoxCalendarApp ?: return
         val pending = goAsync()
-        app.slavaReminders.update().invokeOnCompletion { pending.finish() }
+        val slava = app.slavaReminders.update()
+        val nameDays = app.nameDayReminders.update()
+        slava.invokeOnCompletion { nameDays.invokeOnCompletion { pending.finish() } }
     }
 }

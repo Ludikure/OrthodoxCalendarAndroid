@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import com.orthodox.calendar.R
+import com.orthodox.calendar.data.nameday.NameDayText
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +42,8 @@ import com.orthodox.calendar.ui.theme.AppColors
 /**
  * Banner under the month bar (list & grid views). Its first row is the fasting
  * season — name, date range and, for today, "Day X of Y" — and its second, in
- * the 30 days before the user's slava, a countdown to it. Either row can be
+ * the 30 days before the user's slava (Serbian) or name day (Russian — the two
+ * never meet), a countdown to it. Either row can be
  * absent; with both, they share one card under a thin rule, so a slava inside a
  * fast (Никољдан always is) never hides the fast and costs the list one short
  * row instead of a second banner.
@@ -126,19 +132,29 @@ private fun PeriodRow(
 
 @Composable
 private fun SlavaRow(slava: SlavaCountdown, onTap: () -> Unit) {
+    val isNameDay = slava.kind == SlavaCountdown.Kind.NAME_DAY
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Отвара дан славе", onClick = onTap)
+            .clickable(onClickLabel = if (isNameDay) "Открывает день именин" else "Отвара дан славе", onClick = onTap)
             .padding(horizontal = 14.dp, vertical = 9.dp)
     ) {
-        Text(text = "🕯", fontSize = 16.sp)
+        if (isNameDay) {
+            Icon(
+                painter = painterResource(R.drawable.ic_name_day),
+                contentDescription = null,
+                tint = AppColors.slavaGold,
+                modifier = Modifier.size(18.dp)
+            )
+        } else {
+            Text(text = "🕯", fontSize = 16.sp)
+        }
         Spacer(modifier = Modifier.width(10.dp))
         SlavaTitle(slava, Modifier.weight(1f))
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = SlavaText.countdownLabel(slava.days),
+            text = if (isNameDay) NameDayText.countdown(slava.days) else SlavaText.countdownLabel(slava.days),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = AppColors.slavaGold,
@@ -169,10 +185,13 @@ private fun SlavaTitle(slava: SlavaCountdown, modifier: Modifier) {
     val density = LocalDensity.current
     BoxWithConstraints(modifier = modifier) {
         val maxPx = with(density) { maxWidth.roundToPx() }
-        val today = slava.days == 0
+        val isToday = slava.days == 0
+        val isNameDay = slava.kind == SlavaCountdown.Kind.NAME_DAY
+        val today = if (isNameDay) "Сегодня" else "Данас"
+        val suffix = if (isNameDay) "ваши именины" else "ваша слава"
         val candidates = listOf(
-            if (today) "Данас: ${slava.name} — ваша слава" else "${slava.name} — ваша слава",
-            if (today) "Данас: ${slava.name}" else slava.name
+            if (isToday) "$today: ${slava.name} — $suffix" else "${slava.name} — $suffix",
+            if (isToday) "$today: ${slava.name}" else slava.name
         )
         val fits = candidates.firstOrNull {
             measurer.measure(it, style, maxLines = 1, softWrap = false).size.width <= maxPx

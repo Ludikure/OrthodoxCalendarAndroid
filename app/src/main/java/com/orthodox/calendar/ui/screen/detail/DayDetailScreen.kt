@@ -69,6 +69,8 @@ import com.orthodox.calendar.data.model.LocalizationBundle
 import com.orthodox.calendar.data.model.Reflection
 import com.orthodox.calendar.data.model.SaintBio
 import com.orthodox.calendar.engine.BioMatcher
+import com.orthodox.calendar.data.nameday.NameDayCatalog
+import com.orthodox.calendar.data.nameday.NameDayStore
 import com.orthodox.calendar.data.slava.SlavaCatalog
 import com.orthodox.calendar.data.slava.SlavaDay
 import com.orthodox.calendar.data.slava.SlavaMark
@@ -99,13 +101,22 @@ fun DayDetailScreen(
     /** Today as `yyyy-MM-dd`, from the ViewModel. */
     today: String = LocalDate.now().toIsoDate(),
     /** Called after a slava is set from a saint card, once notifications were asked for. */
-    onSlavaSet: () -> Unit = {}
+    onSlavaSet: () -> Unit = {},
+    /** The user's name-day settings; the card and the "Именины" list show only in Russian. */
+    nameDayStore: NameDayStore? = null
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val isGreat = day.isGreatFeast
     val slavaSettings = slavaStore?.settings?.collectAsState()?.value
         ?.takeIf { language == AppLanguage.SR }
+    val nameDaySettings = nameDayStore?.settings?.collectAsState()?.value
+        ?.takeIf { language == AppLanguage.RU }
+    // The day's names from the bundled catalog (read off the main thread at
+    // launch in Russian; see MainActivity).
+    val dayNames = remember(day, language) {
+        if (language == AppLanguage.RU) NameDayCatalog.shared(context.applicationContext).names(day) else emptyList()
+    }
     /** The slava just set from a saint card, shown in the undo toast. */
     var justSetSlava by remember { mutableStateOf<SlavaDay?>(null) }
     LaunchedEffect(justSetSlava) {
@@ -197,6 +208,12 @@ fun DayDetailScreen(
                     )
                 }
 
+                // The user's or friends' name day on this day (Russian only)
+                nameDaySettings?.mark(day)?.let { mark ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    NameDayCard(mark = mark, mine = nameDaySettings.mine, isToday = day.gregorianDate == today)
+                }
+
                 // Fasting section
                 Spacer(modifier = Modifier.height(16.dp))
                 FastingSection(day = day)
@@ -211,6 +228,16 @@ fun DayDetailScreen(
                         slavaOffer = slavaOffer,
                         onSetSlava = setSlava
                     )
+                    SectionDivider()
+                }
+
+                // Name days (Russian only)
+                if (dayNames.isNotEmpty()) {
+                    val highlighted = remember(nameDaySettings) {
+                        (listOfNotNull(nameDaySettings?.mine?.churchName) +
+                            nameDaySettings?.friends.orEmpty().map { it.nameDay.churchName }).toSet()
+                    }
+                    NameDaysSection(names = dayNames, highlighted = highlighted)
                     SectionDivider()
                 }
 

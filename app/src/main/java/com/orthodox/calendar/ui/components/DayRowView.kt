@@ -27,7 +27,11 @@ import androidx.compose.ui.unit.sp
 import com.orthodox.calendar.data.model.AppLanguage
 import com.orthodox.calendar.data.model.CalendarDay
 import com.orthodox.calendar.data.model.LocalizationBundle
+import com.orthodox.calendar.R
+import com.orthodox.calendar.data.nameday.NameDayMark
 import com.orthodox.calendar.data.slava.SlavaMark
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import com.orthodox.calendar.ui.util.fastingVisuals
 import com.orthodox.calendar.ui.theme.AppColors
 
@@ -39,9 +43,14 @@ fun DayRowView(
     language: AppLanguage,
     modifier: Modifier = Modifier,
     /** The user's or a friend's slava on this day (Serbian only; null otherwise). */
-    slava: SlavaMark? = null
+    slava: SlavaMark? = null,
+    /** The user's or a friend's name day on this day (Russian only; null otherwise). */
+    nameDay: NameDayMark? = null
 ) {
-    val isMySlava = slava?.isMine == true
+    val isMyNameDay = nameDay?.isMine == true
+    // The user's own slava or name day: the row turns gold either way (the two
+    // never meet — slavas are Serbian only, name days Russian only).
+    val isMySlava = slava?.isMine == true || isMyNameDay
     val isGreatFeast = day.isGreatFeast
     val isRed = day.primaryFeast?.importance == "great"
     val isBold = day.primaryFeast?.importance.let { it == "bold" || it == "great" }
@@ -146,7 +155,19 @@ fun DayRowView(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                if (isMySlava) {
+                if (isMyNameDay) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        NameDayIcon(Modifier.size(10.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "ВАШИ ИМЕНИНЫ",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.slavaGold,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+                } else if (isMySlava) {
                     Text(
                         text = "🕯 ВАША СЛАВА",
                         fontSize = 9.sp,
@@ -209,6 +230,21 @@ fun DayRowView(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                // Friends' name days: "мама · Галина"
+                nameDay?.friendLines?.forEach { line ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        NameDayIcon(Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = line,
+                            fontSize = 12.sp,
+                            color = AppColors.slavaGold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.width(6.dp))
@@ -243,4 +279,15 @@ private fun FastingBadge(day: CalendarDay) {
             )
         }
     }
+}
+
+/** The name-day gift (iOS: SF Symbol "gift"), in the slava gold. */
+@Composable
+fun NameDayIcon(modifier: Modifier = Modifier) {
+    Icon(
+        painter = painterResource(R.drawable.ic_name_day),
+        contentDescription = null,
+        tint = AppColors.slavaGold,
+        modifier = modifier
+    )
 }

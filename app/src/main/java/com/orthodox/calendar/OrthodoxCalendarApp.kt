@@ -3,8 +3,11 @@ package com.orthodox.calendar
 import android.app.Application
 import android.content.ComponentCallbacks2
 import com.orthodox.calendar.app.AppUpdateGate
+import com.orthodox.calendar.app.NameDayReminders
 import com.orthodox.calendar.app.SlavaReminders
 import com.orthodox.calendar.app.shouldReleaseCalendarCache
+import com.orthodox.calendar.data.nameday.NameDayCatalog
+import com.orthodox.calendar.data.nameday.NameDayStore
 import com.orthodox.calendar.data.repository.CalendarRepository
 import com.orthodox.calendar.data.slava.SlavaStore
 import com.orthodox.calendar.widget.WidgetSync
@@ -58,6 +61,19 @@ class OrthodoxCalendarApp : Application() {
         // needs no table line never builds it.
         SlavaReminders(this, slavaStore, { repository })
     }
+
+    /**
+     * The user's name day and friends' name days (Russian only), built like the
+     * slava above, and their reminders. Every change reschedules them.
+     */
+    val nameDayStore: NameDayStore by lazy {
+        NameDayStore(this).also { store -> store.onChange = { nameDayReminders.update() } }
+    }
+
+    val nameDayReminders: NameDayReminders by lazy { NameDayReminders(this, nameDayStore) }
+
+    /** The bundled name-day catalog (imeniny_ru.json), read once. */
+    val nameDayCatalog: NameDayCatalog get() = NameDayCatalog.shared(this)
 
     /**
      * Writes the home-screen widgets' snapshot (widget/WidgetSync.kt). The

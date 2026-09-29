@@ -108,6 +108,11 @@ Port of the iOS widgets (`OrthodoxCalendarWidget/`), built with Jetpack Glance. 
 - Tapping opens `MainActivity` with `ACTION_OPEN_TODAY`: calendar on today, today's detail on top.
 - The picker's label/description and preview (`layout/widget_preview_*.xml`, RemoteViews-safe views only) are Android resources — the one exception to "no string resources".
 
+### Russian Name Days (data/nameday/)
+Port of the iOS именины (`NameDay.swift`, `NameDayStore`, `NameDayReminders`, `NameDaySettingsView`), Russian only and built on the slava pattern: `NameDayStore` keeps one JSON value in SharedPreferences (`imeniny`), `app/NameDayReminders` schedules inexact alarms through the slava receivers (`SlavaReminderReceiver` posts both, on a channel of its own; `SlavaRescheduleReceiver` re-arms both after a reboot), POST_NOTIFICATIONS is asked only when a name day is saved. The month list marks the user's day gold and friends' days in a caption line, the season banner's second row counts down the last 30 days (`SlavaCountdown.Kind.NAME_DAY`), the day detail shows the user's card and an "Именины" list (a dozen names, then "и другие (N)"), and Settings › Мои именины holds the name + birthday editor, the saint picker and friends' name days.
+- `assets/localization/imeniny_ru.json` is a byte-for-byte copy of the iOS bundle's (generated there by `scripts/russian/bundle_imeniny.py`); never edit it here. `NameDayCatalog.shared(context)` reads it once (warmed off the main thread at launch in Russian).
+- The name day is the first commemoration of the name on or after the birthday (`NameDayCatalog.firstNameDay`) — new martyrs left out unless "Учитывать новомучеников" is on or the name has no other saint — stored as a `NameDayAnchor` (Julian date, Pascha distance or weekday window), never a civil date. `NameDayTest` mirrors the iOS `NameDayTests`.
+
 ### Haptic Feedback
 `Haptics` utility uses `View.performHapticFeedback()` with sharp single-tick constants for responsiveness:
 - `light` (`KEYBOARD_TAP`) — Search, Settings, Share, date picker
