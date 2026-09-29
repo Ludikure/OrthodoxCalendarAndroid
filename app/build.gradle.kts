@@ -26,8 +26,8 @@ android {
         applicationId = "com.orthodox.calendar"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.5.3"
+        versionCode = 18
+        versionName = "1.5.4"
     }
 
     signingConfigs {

@@ -504,7 +504,7 @@ class CalendarRepository(private val context: Context) : YearSource {
  * Mirror of `BundledData` in the iOS `CalendarRepository.swift`.
  */
 object BundledData {
-    const val REVISION = 9
+    const val REVISION = 10
 
     enum class Source { BUNDLE, CACHE }
 
