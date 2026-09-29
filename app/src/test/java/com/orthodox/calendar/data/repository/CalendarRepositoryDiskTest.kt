@@ -38,8 +38,13 @@ class CalendarRepositoryDiskTest {
         }
     }
 
-    private fun writeYear(locale: String, year: Int, mtime: Long = System.currentTimeMillis()): File =
-        File(cacheDir, "calendar_${locale}_$year.json").apply {
+    private fun writeYear(
+        locale: String,
+        year: Int,
+        mtime: Long = System.currentTimeMillis(),
+        name: String = "calendar_${locale}_$year.json"
+    ): File =
+        File(cacheDir, name).apply {
             writeText(
                 """{"year":$year,"locale":"$locale","generatedBy":"test","days":{"01-01":""" +
                     """{"gregorianDate":"$year-01-01","julianDate":"12-19","dayOfWeek":0,""" +
@@ -102,6 +107,31 @@ class CalendarRepositoryDiskTest {
             "calendar_sr_2031", emptyYear(2031), fromDisk = true, startGeneration = repo.currentGeneration()
         )
         assertEquals(listOf("calendar_sr_2031"), repo.cachedYearKeys())
+    }
+
+    /** A bundled year's archive copy wins only above the bundle's revision. */
+    @Test
+    fun `a newer archive copy of a bundled year is preferred over the bundle`() = runBlocking<Unit> {
+        val key = "calendar_sr_2026"
+        val newer = BundledData.cacheName(key, BundledData.REVISION + 1) + ".json"
+        writeYear("sr", 2026, name = newer)
+        val file = CalendarRepository(app).load("sr", 2026, allowNetwork = false)
+        assertEquals("the one-day copy, not the bundle", 1, file.days.size)
+    }
+
+    @Test
+    fun `a copy at or below the bundle's revision is ignored and removed`() = runBlocking<Unit> {
+        val key = "calendar_sr_2026"
+        val stale = writeYear("sr", 2026, name = BundledData.cacheName(key, BundledData.REVISION) + ".json")
+        val file = CalendarRepository(app).load("sr", 2026, allowNetwork = false)
+        assertTrue("the bundle", file.days.size >= 365)
+        assertFalse("a copy that can never win is deleted", stale.exists())
+    }
+
+    @Test
+    fun `archive copies are not counted by the disk trim`() {
+        val copy = File(cacheDir, BundledData.cacheName("calendar_sr_2026", 12) + ".json").apply { writeText("{}") }
+        assertTrue(cacheFilesToEvict(listOf(copy), keepPerLocale = 0).isEmpty())
     }
 
     /**
